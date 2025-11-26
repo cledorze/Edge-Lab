@@ -1,9 +1,3 @@
-# Generated Elemental configuration files (contain sensitive registration tokens)
-elemental/
-
-# Generated Rancher manifests (created by ztp-precreate.sh)
-manifests-2-sites/
-
 # Build outputs
 output/
 *.iso
@@ -11,4 +5,8 @@ output/
 # Temporary files
 *.backup
 *.tmp
+
+# Note: generated/ directory is NOT ignored - it contains files needed for build node
+# - generated/elemental/ - Elemental config files (downloaded from Rancher)
+# - generated/manifests-2-sites/ - Generated Rancher manifests
 

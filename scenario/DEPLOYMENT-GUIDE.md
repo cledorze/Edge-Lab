@@ -59,8 +59,8 @@ Removes all VMs, ISOs, and Rancher/Fleet resources.
 ***** Important *****: This step must be done **on the Rancher server** before building ISOs.
 
 **Prerequisites**: Before building ISOs, you must have the Elemental configuration files:
-- `elemental/elemental_config-site-a.yaml` (from Rancher Registration Endpoint for Site A)
-- `elemental/elemental_config-site-b.yaml` (from Rancher Registration Endpoint for Site B)
+- `generated/elemental/elemental_config-site-a.yaml` (from Rancher Registration Endpoint for Site A)
+- `generated/elemental/elemental_config-site-b.yaml` (from Rancher Registration Endpoint for Site B)
 
 **If these files don't exist:**
 
@@ -75,7 +75,7 @@ This script will:
 1. Apply MachineRegistrations for site-a and site-b
 2. Wait for registration URLs to be generated
 3. Automatically download `elemental_config.yaml` from each endpoint
-4. Save them as `elemental/elemental_config-site-a.yaml` and `elemental/elemental_config-site-b.yaml`
+4. Save them as `generated/elemental/elemental_config-site-a.yaml` and `generated/elemental/elemental_config-site-b.yaml`
 
 **If automatic download fails**, the script provides instructions to download manually from Rancher UI.
 
@@ -87,8 +87,8 @@ kubectl apply -f yaml/site-a-registration.yaml yaml/site-b-registration.yaml
 ```
 
 Then download `elemental_config.yaml` from each endpoint manually and save as:
-- `elemental/elemental_config-site-a.yaml`
-- `elemental/elemental_config-site-b.yaml`
+- `generated/elemental/elemental_config-site-a.yaml`
+- `generated/elemental/elemental_config-site-b.yaml`
 
 **Option 2: Create manually in Rancher UI:**
 1. Create Registration Endpoints in Rancher UI (Elemental → Registration Endpoints) **with `machineInventoryLabels` configured**:
@@ -107,7 +107,7 @@ Then download `elemental_config.yaml` from each endpoint manually and save as:
        hostname: ${Runtime/Hostname}
      ```
 2. Download `elemental_config.yaml` from each endpoint
-3. Save them as `elemental/elemental_config-site-a.yaml` and `elemental/elemental_config-site-b.yaml`
+3. Save them as `generated/elemental/elemental_config-site-a.yaml` and `generated/elemental/elemental_config-site-b.yaml`
 
 ***** Note *****: MachineRegistration YAML files are available in `scenario/yaml/` directory.
 
@@ -496,9 +496,9 @@ cd /home/tofix/LAB/EIB-demo/scale-out-eib-elemental/test-10-VMs/scenario
 - `gitrepo-site-a.yaml`, `gitrepo-site-b.yaml`: Fleet GitRepos
 
 **Other directories (in parent directory):**
-- `elemental/`: Elemental configuration files (elemental_config-site-a.yaml, elemental_config-site-b.yaml)
+- `generated/elemental/`: Elemental configuration files (elemental_config-site-a.yaml, elemental_config-site-b.yaml)
+- `generated/manifests-2-sites/`: Generated Rancher manifests
 - `output/`: EIB build ISOs
-- `manifests-2-sites/`: Generated Rancher manifests
 
 ---
 

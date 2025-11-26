@@ -1,0 +1,32 @@
+apiVersion: elemental.cattle.io/v1beta1
+kind: MachineInventorySelectorTemplate
+metadata:
+  name: site-b-vm-01-selector
+  namespace: fleet-default
+spec:
+  template:
+    spec:
+      selector:
+        matchLabels:
+          site-id: site-b-vm-01
+          test-group: 2-sites-5-vms
+          hostname: node1-siteb
+---
+apiVersion: provisioning.cattle.io/v1
+kind: Cluster
+metadata:
+  name: site-b-vm-01
+  namespace: fleet-default
+spec:
+  kubernetesVersion: v1.33.5+k3s1
+  rkeConfig:
+    machinePools:
+    - name: control-plane
+      quantity: 1
+      etcdRole: true
+      controlPlaneRole: true
+      workerRole: true
+      machineConfigRef:
+        kind: MachineInventorySelectorTemplate
+        name: site-b-vm-01-selector
+        apiVersion: elemental.cattle.io/v1beta1

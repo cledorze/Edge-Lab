@@ -1,0 +1,6 @@
+# This directory contains generated files needed for the build node
+# - elemental/ - Elemental configuration files (downloaded from Rancher)
+# - manifests-2-sites/ - Generated Rancher manifests (created by ztp-precreate.sh)
+# 
+# These files are tracked in git as they are needed for the build process
+

@@ -6,7 +6,7 @@
 # 1. Applies MachineRegistrations for site-a and site-b
 # 2. Waits for registration URLs to be generated
 # 3. Downloads elemental_config.yaml from each endpoint
-# 4. Saves them as elemental/elemental_config-site-a.yaml and elemental/elemental_config-site-b.yaml
+# 4. Saves them as generated/elemental/elemental_config-site-a.yaml and generated/elemental/elemental_config-site-b.yaml
 #
 # Usage: ./create-registration-endpoints.sh
 
@@ -24,7 +24,7 @@ export KUBECONFIG="$KUBECONFIG_FILE"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YAML_DIR="$SCRIPT_DIR/yaml"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ELEMENTAL_DIR="$PROJECT_ROOT/elemental"
+ELEMENTAL_DIR="$PROJECT_ROOT/generated/elemental"
 
 echo "=========================================="
 echo "Create Registration Endpoints"

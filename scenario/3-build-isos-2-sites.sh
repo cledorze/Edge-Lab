@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to build EIB ISOs for 2 sites (Site A and Site B)
-# This script requires elemental/elemental_config-site-a.yaml and elemental/elemental_config-site-b.yaml
+# This script requires generated/elemental/elemental_config-site-a.yaml and generated/elemental/elemental_config-site-b.yaml
 # These files must be created from Rancher Registration Endpoints first
 #
 # Usage: ./build-isos-2-sites.sh
@@ -19,7 +19,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ELEMENTAL_DIR="${PROJECT_ROOT}/elemental"
+ELEMENTAL_DIR="${PROJECT_ROOT}/generated/elemental"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 
 CONFIG_A="${ELEMENTAL_DIR}/elemental_config-site-a.yaml"
@@ -48,7 +48,7 @@ if [ ! -f "$CONFIG_B" ]; then
     exit 1
 fi
 
-# Create temp directory for other config files (EIB requires only one file in elemental/)
+# Create temp directory for other config files (EIB requires only one file in generated/elemental/)
 TEMP_DIR=$(mktemp -d)
 log_info "Temporary directory for config files: $TEMP_DIR"
 
