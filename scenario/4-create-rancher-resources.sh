@@ -100,7 +100,7 @@ echo ""
 # Generate and apply manifests (MachineInventorySelectorTemplates + Clusters)
 "$ZTP_SCRIPT" \
     --batch "$YAML_DIR/vms-config-2-sites.csv" \
-    --output-dir "$PROJECT_ROOT/manifests-2-sites"
+    --output-dir "$PROJECT_ROOT/generated/manifests-2-sites"
 
 echo ""
 echo "=== Creating Fleet Resources ==="
