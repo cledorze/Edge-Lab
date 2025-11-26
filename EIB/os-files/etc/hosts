@@ -1,0 +1,9 @@
+127.0.0.1   localhost localhost.localdomain
+::1         localhost localhost.localdomain
+
+# Infrastructure hosts
+100.100.100.251   rancher.cledorze.lan
+100.100.100.199   uterrie.cledorze.lan
+100.100.100.248   node1.cledorze.lan
+100.100.100.249   node2.cledorze.lan
+100.100.100.9     synnie.cledorze.lan

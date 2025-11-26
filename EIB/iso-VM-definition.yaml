@@ -1,0 +1,48 @@
+apiVersion: 1.3
+image:
+  imageType: iso
+  arch: x86_64
+  baseImage: SL-Micro.x86_64-6.1-Base-RT-SelfInstall-GM.install.iso
+  outputImageName: vm-rancher-fleet-scale.iso
+
+operatingSystem:
+  isoConfiguration:
+    # Unattended installation on /dev/vda
+    # This triggers automatic installation without user prompts
+    installDevice: /dev/vda
+  kernelArgs:
+    # Disable SELinux at boot (set selinux=0)
+    - selinux=0
+  time:
+    timezone: Europe/Paris
+    ntp:
+      forceWait: true
+      pools:
+        - fr.pool.ntp.org
+      servers:
+        - 0.fr.pool.ntp.org
+        - 1.fr.pool.ntp.org
+        - 2.fr.pool.ntp.org
+        - 3.fr.pool.ntp.org
+  keymap: fr
+  users:
+    - username: root
+      createHomeDir: true
+      encryptedPassword: $6$DjmcDMJGizEejTwl$J16MR3/r/ki9UBoePAlwt9l02BPwlyoe/6.l8xNWMsDPWongFOWPw0Cio5Hr2yGSqo4Ofpfc2e0GkZvi3k504.
+      sshKeys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGDKrMEscmfI/N4oGtSjQ6r/MtjvFVDKI58/RMQJw3um cledorze@home
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC5cke7RYaET4MGBNVMfa0joBPyIslSNZAgrOz4zbRRJlnuuWYaoD7AcIpN+INZykllLjRXsDtggYjLEed5BvrNEo87CBZrgwjd3KQ9Qp1awKPyXeIG80VROO+KTI4JoS9uC5pRxENEo/yWjpGMaHSeZoSDGKfLjnJbxru4pJhKYFlDjEd/eFZ6Ho4ZSV1CMHRM9Tn5/3jPKd3do5qDYl/UhoG/M0Pw222iGu6/DAtGpfVPrLv1Kp3gOTTcw1qcYWept3CPgr9Q60rCyGmpCJ+E5+kqExG/EdgfRFjKeneNYdqqnFKKOAV6cwLcCvMYbQ5GVwmsnX6pAyvS8bWYOui/lbM/LbZ1hiMDjmOSFg5cFTWz1C1Zlg1m+UhCFkIK5aAm5i5TNwwus2OH8Lo5rwSydCNtsKlxk2FX1oKhqaCiCi+FK9d+1TMCw/Swr5TvFTXONeR2JveQfET6R0cOrl+2zdqEsLWdRfwStAL+h4L/OiDO+Q99t3QndKRjsFYBZAs= tofix@osxie.local
+    - username: tofix
+      createHomeDir: true
+      encryptedPassword: $6$DjmcDMJGizEejTwl$J16MR3/r/ki9UBoePAlwt9l02BPwlyoe/6.l8xNWMsDPWongFOWPw0Cio5Hr2yGSqo4Ofpfc2e0GkZvi3k504.
+      sshKeys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC5cke7RYaET4MGBNVMfa0joBPyIslSNZAgrOz4zbRRJlnuuWYaoD7AcIpN+INZykllLjRXsDtggYjLEed5BvrNEo87CBZrgwjd3KQ9Qp1awKPyXeIG80VROO+KTI4JoS9uC5pRxENEo/yWjpGMaHSeZoSDGKfLjnJbxru4pJhKYFlDjEd/eFZ6Ho4ZSV1CMHRM9Tn5/3jPKd3do5qDYl/UhoG/M0Pw222iGu6/DAtGpfVPrLv1Kp3gOTTcw1qcYWept3CPgr9Q60rCyGmpCJ+E5+kqExG/EdgfRFjKeneNYdqqnFKKOAV6cwLcCvMYbQ5GVwmsnX6pAyvS8bWYOui/lbM/LbZ1hiMDjmOSFg5cFTWz1C1Zlg1m+UhCFkIK5aAm5i5TNwwus2OH8Lo5rwSydCNtsKlxk2FX1oKhqaCiCi+FK9d+1TMCw/Swr5TvFTXONeR2JveQfET6R0cOrl+2zdqEsLWdRfwStAL+h4L/OiDO+Q99t3QndKRjsFYBZAs= tofix@osxie.local
+    - username: cledorze
+      createHomeDir: true
+      encryptedPassword: $6$DjmcDMJGizEejTwl$J16MR3/r/ki9UBoePAlwt9l02BPwlyoe/6.l8xNWMsDPWongFOWPw0Cio5Hr2yGSqo4Ofpfc2e0GkZvi3k504.
+      sshKeys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC5cke7RYaET4MGBNVMfa0joBPyIslSNZAgrOz4zbRRJlnuuWYaoD7AcIpN+INZykllLjRXsDtggYjLEed5BvrNEo87CBZrgwjd3KQ9Qp1awKPyXeIG80VROO+KTI4JoS9uC5pRxENEo/yWjpGMaHSeZoSDGKfLjnJbxru4pJhKYFlDjEd/eFZ6Ho4ZSV1CMHRM9Tn5/3jPKd3do5qDYl/UhoG/M0Pw222iGu6/DAtGpfVPrLv1Kp3gOTTcw1qcYWept3CPgr9Q60rCyGmpCJ+E5+kqExG/EdgfRFjKeneNYdqqnFKKOAV6cwLcCvMYbQ5GVwmsnX6pAyvS8bWYOui/lbM/LbZ1hiMDjmOSFg5cFTWz1C1Zlg1m+UhCFkIK5aAm5i5TNwwus2OH8Lo5rwSydCNtsKlxk2FX1oKhqaCiCi+FK9d+1TMCw/Swr5TvFTXONeR2JveQfET6R0cOrl+2zdqEsLWdRfwStAL+h4L/OiDO+Q99t3QndKRjsFYBZAs= tofix@osxie.local
+  packages:
+    sccRegistrationCode: INTERNAL-USE-ONLY-6ed2-8a6c
+    packageList:
+      - git

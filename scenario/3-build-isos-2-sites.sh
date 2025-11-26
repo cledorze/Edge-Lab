@@ -22,6 +22,11 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ELEMENTAL_DIR="${PROJECT_ROOT}/generated/elemental"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 
+# EIB directory configuration (local EIB directory)
+EIB_DIR="${PROJECT_ROOT}/EIB"
+EIB_BUILD_SCRIPT="${EIB_DIR}/build-eib-image.sh"
+EIB_DEFINITION_FILE="${EIB_DIR}/iso-VM-definition.yaml"
+
 CONFIG_A="${ELEMENTAL_DIR}/elemental_config-site-a.yaml"
 CONFIG_B="${ELEMENTAL_DIR}/elemental_config-site-b.yaml"
 CONFIG_CURRENT="${ELEMENTAL_DIR}/elemental_config.yaml"
@@ -32,6 +37,48 @@ ISO_B="${OUTPUT_DIR}/vm-rancher-fleet-scale-site-b.iso"
 
 log_info "Building EIB ISOs for 2 Sites"
 echo ""
+
+# Check and setup EIB directory
+setup_eib() {
+    log_info "Checking EIB directory..."
+    
+    # Check if EIB directory exists
+    if [ ! -d "$EIB_DIR" ]; then
+        log_error "EIB directory not found at: $EIB_DIR"
+        log_info "Expected location: ${PROJECT_ROOT}/EIB"
+        log_info "The EIB directory should contain build-eib-image.sh, iso-VM-definition.yaml, and other EIB files"
+        exit 1
+    fi
+    
+    # Check if build script exists
+    if [ ! -f "$EIB_BUILD_SCRIPT" ]; then
+        log_error "build-eib-image.sh not found at: $EIB_BUILD_SCRIPT"
+        log_info "Expected location: ${EIB_DIR}/build-eib-image.sh"
+        exit 1
+    fi
+    
+    # Check if definition file exists
+    if [ ! -f "$EIB_DEFINITION_FILE" ]; then
+        log_error "iso-VM-definition.yaml not found at: $EIB_DEFINITION_FILE"
+        log_info "Expected location: ${EIB_DIR}/iso-VM-definition.yaml"
+        exit 1
+    fi
+    
+    # Check prerequisites (podman)
+    if ! command -v podman &> /dev/null; then
+        log_error "podman is not installed"
+        log_info "Install with: sudo zypper install podman"
+        exit 1
+    fi
+    
+    log_info "✓ EIB directory ready"
+}
+
+# Setup EIB build environment
+setup_eib
+
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
 
 # Check if config files exist BEFORE moving anything
 if [ ! -f "$CONFIG_A" ]; then
@@ -76,16 +123,28 @@ echo "=========================================="
 log_info "Using config from: $CONFIG_A_TEMP"
 cp "$CONFIG_A_TEMP" "$CONFIG_CURRENT"
 
-cd "$PROJECT_ROOT"
-log_info "Running EIB build..."
-./build-eib-image.sh
+# Change to EIB directory for build
+cd "$EIB_DIR"
+log_info "Running EIB build from: $(pwd)"
+log_info "Using build script: $EIB_BUILD_SCRIPT"
 
-# Find ISO (may be in output/ or parent directory)
+# Copy elemental config to EIB elemental directory
+EIB_ELEMENTAL_DIR="${EIB_DIR}/elemental"
+mkdir -p "$EIB_ELEMENTAL_DIR"
+cp "$CONFIG_CURRENT" "${EIB_ELEMENTAL_DIR}/elemental_config.yaml"
+
+# Run the build script
+"$EIB_BUILD_SCRIPT"
+
+# Find ISO (may be in EIB output/ or EIB config directory)
+EIB_OUTPUT_DIR="${EIB_DIR}/output"
 ISO_BUILT=""
-if [ -f "${OUTPUT_DIR}/vm-rancher-fleet-scale.iso" ]; then
-    ISO_BUILT="${OUTPUT_DIR}/vm-rancher-fleet-scale.iso"
+if [ -f "${EIB_OUTPUT_DIR}/vm-rancher-fleet-scale.iso" ]; then
+    ISO_BUILT="${EIB_OUTPUT_DIR}/vm-rancher-fleet-scale.iso"
 elif [ -f "${EIB_DIR}/vm-rancher-fleet-scale.iso" ]; then
     ISO_BUILT="${EIB_DIR}/vm-rancher-fleet-scale.iso"
+elif [ -f "${OUTPUT_DIR}/vm-rancher-fleet-scale.iso" ]; then
+    ISO_BUILT="${OUTPUT_DIR}/vm-rancher-fleet-scale.iso"
 fi
 
 if [ -n "$ISO_BUILT" ]; then
@@ -108,16 +167,28 @@ log_info "Using config from: $CONFIG_B_TEMP"
 rm -f "$CONFIG_CURRENT"
 cp "$CONFIG_B_TEMP" "$CONFIG_CURRENT"
 
-cd "$PROJECT_ROOT"
-log_info "Running EIB build..."
-./build-eib-image.sh
+# Change to EIB directory for build
+cd "$EIB_DIR"
+log_info "Running EIB build from: $(pwd)"
+log_info "Using build script: $EIB_BUILD_SCRIPT"
 
-# Find ISO (may be in output/ or parent directory)
+# Copy elemental config to EIB elemental directory
+EIB_ELEMENTAL_DIR="${EIB_DIR}/elemental"
+mkdir -p "$EIB_ELEMENTAL_DIR"
+cp "$CONFIG_CURRENT" "${EIB_ELEMENTAL_DIR}/elemental_config.yaml"
+
+# Run the build script
+"$EIB_BUILD_SCRIPT"
+
+# Find ISO (may be in EIB output/ or EIB config directory)
+EIB_OUTPUT_DIR="${EIB_DIR}/output"
 ISO_BUILT=""
-if [ -f "${OUTPUT_DIR}/vm-rancher-fleet-scale.iso" ]; then
-    ISO_BUILT="${OUTPUT_DIR}/vm-rancher-fleet-scale.iso"
+if [ -f "${EIB_OUTPUT_DIR}/vm-rancher-fleet-scale.iso" ]; then
+    ISO_BUILT="${EIB_OUTPUT_DIR}/vm-rancher-fleet-scale.iso"
 elif [ -f "${EIB_DIR}/vm-rancher-fleet-scale.iso" ]; then
     ISO_BUILT="${EIB_DIR}/vm-rancher-fleet-scale.iso"
+elif [ -f "${OUTPUT_DIR}/vm-rancher-fleet-scale.iso" ]; then
+    ISO_BUILT="${OUTPUT_DIR}/vm-rancher-fleet-scale.iso"
 fi
 
 if [ -n "$ISO_BUILT" ]; then

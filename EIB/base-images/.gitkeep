@@ -1,0 +1,8 @@
+# Base Images Directory
+
+Place the SUSE Linux Micro 6.1 Base RT SelfInstall ISO here:
+- File: SL-Micro.x86_64-6.1-Base-RT-SelfInstall-GM.install.iso
+- Download from: https://www.suse.com/download/sle-micro/
+
+This file is required for EIB image building but is not included in git due to size.
+

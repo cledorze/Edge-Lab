@@ -1,0 +1,16 @@
+[Unit]
+Description=Select Installation Device for Elemental (first disk >200GB)
+Before=elemental-register-systemd.service
+After=local-fs.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/select-install-device.sh
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
+
