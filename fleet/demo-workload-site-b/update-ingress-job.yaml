@@ -39,7 +39,7 @@ spec:
             TRAEFIK_IP=$(kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
             
             if [ -n "$TRAEFIK_IP" ] && [ "$TRAEFIK_IP" != "null" ] && [ "$TRAEFIK_IP" != "" ]; then
-              echo "✓ Traefik LoadBalancer IP found: $TRAEFIK_IP"
+              echo "OK: Traefik LoadBalancer IP found: $TRAEFIK_IP"
               break
             fi
             
@@ -61,7 +61,7 @@ spec:
           NEW_HOST="demo-workload-site-b.${TRAEFIK_IP}.sslip.io"
           
           if [ "$CURRENT_HOST" = "$NEW_HOST" ]; then
-            echo "✓ Ingress hostname is already correct: $NEW_HOST"
+            echo "OK: Ingress hostname is already correct: $NEW_HOST"
             exit 0
           fi
           
@@ -92,8 +92,8 @@ spec:
                 }
               ]}
             ]" && {
-              echo "✓ Ingress rule added successfully"
-              echo "✓ Access URL: http://$NEW_HOST"
+              echo "OK: Ingress rule added successfully"
+              echo "OK: Access URL: http://$NEW_HOST"
             } || {
               echo "ERROR: Failed to add Ingress rule"
               exit 1
@@ -104,8 +104,8 @@ spec:
             kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type='json' -p="[
               {\"op\": \"replace\", \"path\": \"/spec/rules/0/host\", \"value\": \"$NEW_HOST\"}
             ]" && {
-              echo "✓ Ingress updated successfully"
-              echo "✓ Access URL: http://$NEW_HOST"
+              echo "OK: Ingress updated successfully"
+              echo "OK: Access URL: http://$NEW_HOST"
             } || {
               echo "ERROR: Failed to update Ingress"
               exit 1
@@ -115,7 +115,7 @@ spec:
           # Verify update
           VERIFIED_HOST=$(kubectl get ingress $INGRESS_NAME -n demo-workload-site-b -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
           if [ "$VERIFIED_HOST" = "$NEW_HOST" ]; then
-            echo "✓ Verification successful: Ingress hostname is $VERIFIED_HOST"
+            echo "OK: Verification successful: Ingress hostname is $VERIFIED_HOST"
           else
             echo "⚠ Warning: Verification failed. Expected $NEW_HOST, got $VERIFIED_HOST"
           fi

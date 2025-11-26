@@ -110,7 +110,7 @@ data:
         <div class="container">
             <div class="header">
                 <h1>🏭 Site B - Workload</h1>
-                <div class="site-badge">✓ Site B Operational</div>
+                <div class="site-badge">OK: Site B Operational</div>
             </div>
             
             <div class="info-card">
@@ -146,7 +146,7 @@ data:
                 <h2>📊 Deployment Status</h2>
                 <div class="info-item">
                     <span class="info-label">Status:</span>
-                    <span class="info-value">✓ Running</span>
+                    <span class="info-value">OK: Running</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Deployment:</span>
