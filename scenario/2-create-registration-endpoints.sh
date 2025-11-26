@@ -110,85 +110,61 @@ echo ""
 mkdir -p "$ELEMENTAL_DIR"
 
 # Download elemental_config.yaml from each endpoint
-# The registration URL points to a page that serves the config file
-# We need to append /elemental_config.yaml or use the API endpoint
+# The registration URL itself returns the YAML config when accessed with Accept: application/yaml header
 
 echo "Downloading elemental_config for Site A..."
-SITE_A_TOKEN=$(kubectl get machineregistration site-a-registration -n fleet-default -o jsonpath='{.status.registrationToken}' 2>/dev/null || echo "")
 
-if [ -z "$SITE_A_TOKEN" ]; then
-    echo "WARNING:  Could not get registration token for Site A"
-    echo "   Please download manually from Rancher UI"
-    echo "   Registration URL: $SITE_A_URL"
-else
-    # Try different URL patterns for downloading the config
-    # Pattern 1: Direct config endpoint
-    CONFIG_URL1="${SITE_A_URL}/elemental_config.yaml"
-    # Pattern 2: With token in path
-    CONFIG_URL2="${SITE_A_URL%/registration/*}/registration/$SITE_A_TOKEN/elemental_config.yaml"
-    # Pattern 3: API endpoint (if Rancher API is accessible)
-    RANCHER_HOST=$(echo "$SITE_A_URL" | sed -E 's|https?://([^/]+).*|\1|')
-    CONFIG_URL3="https://${RANCHER_HOST}/elemental/registration/$SITE_A_TOKEN/elemental_config.yaml"
-    
-    DOWNLOADED=false
-    for URL in "$CONFIG_URL1" "$CONFIG_URL2" "$CONFIG_URL3"; do
-        if curl -s -f -k -o "$ELEMENTAL_DIR/elemental_config-site-a.yaml" "$URL" 2>/dev/null; then
-            FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || echo "0")
-            if [ "$FILE_SIZE" -gt 100 ]; then
-                echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-a.yaml ($FILE_SIZE bytes)"
-                DOWNLOADED=true
-                break
-            fi
-        fi
-    done
-    
-    if [ "$DOWNLOADED" = false ]; then
-        echo "WARNING:  Could not download Site A config automatically"
+# The registration URL itself returns the YAML config when accessed with proper headers
+if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_config-site-a.yaml" "$SITE_A_URL" 2>/dev/null; then
+    FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || echo "0")
+    if [ "$FILE_SIZE" -gt 50 ]; then
+        echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-a.yaml ($FILE_SIZE bytes)"
+    else
+        echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
         echo "   Please download manually from Rancher UI:"
         echo "   1. Go to Elemental → Registration Endpoints"
         echo "   2. Click on 'site-a-registration'"
         echo "   3. Download 'elemental_config.yaml'"
         echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-a.yaml"
         echo "   Registration URL: $SITE_A_URL"
+        rm -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml"
     fi
+else
+    echo "WARNING:  Could not download Site A config automatically"
+    echo "   Please download manually from Rancher UI:"
+    echo "   1. Go to Elemental → Registration Endpoints"
+    echo "   2. Click on 'site-a-registration'"
+    echo "   3. Download 'elemental_config.yaml'"
+    echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-a.yaml"
+    echo "   Registration URL: $SITE_A_URL"
 fi
 
 echo ""
 echo "Downloading elemental_config for Site B..."
-SITE_B_TOKEN=$(kubectl get machineregistration site-b-registration -n fleet-default -o jsonpath='{.status.registrationToken}' 2>/dev/null || echo "")
 
-if [ -z "$SITE_B_TOKEN" ]; then
-    echo "WARNING:  Could not get registration token for Site B"
-    echo "   Please download manually from Rancher UI"
-    echo "   Registration URL: $SITE_B_URL"
-else
-    # Try different URL patterns for downloading the config
-    CONFIG_URL1="${SITE_B_URL}/elemental_config.yaml"
-    CONFIG_URL2="${SITE_B_URL%/registration/*}/registration/$SITE_B_TOKEN/elemental_config.yaml"
-    RANCHER_HOST=$(echo "$SITE_B_URL" | sed -E 's|https?://([^/]+).*|\1|')
-    CONFIG_URL3="https://${RANCHER_HOST}/elemental/registration/$SITE_B_TOKEN/elemental_config.yaml"
-    
-    DOWNLOADED=false
-    for URL in "$CONFIG_URL1" "$CONFIG_URL2" "$CONFIG_URL3"; do
-        if curl -s -f -k -o "$ELEMENTAL_DIR/elemental_config-site-b.yaml" "$URL" 2>/dev/null; then
-            FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || echo "0")
-            if [ "$FILE_SIZE" -gt 100 ]; then
-                echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-b.yaml ($FILE_SIZE bytes)"
-                DOWNLOADED=true
-                break
-            fi
-        fi
-    done
-    
-    if [ "$DOWNLOADED" = false ]; then
-        echo "WARNING:  Could not download Site B config automatically"
+# The registration URL itself returns the YAML config when accessed with proper headers
+if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_config-site-b.yaml" "$SITE_B_URL" 2>/dev/null; then
+    FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || echo "0")
+    if [ "$FILE_SIZE" -gt 50 ]; then
+        echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-b.yaml ($FILE_SIZE bytes)"
+    else
+        echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
         echo "   Please download manually from Rancher UI:"
         echo "   1. Go to Elemental → Registration Endpoints"
         echo "   2. Click on 'site-b-registration'"
         echo "   3. Download 'elemental_config.yaml'"
         echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-b.yaml"
         echo "   Registration URL: $SITE_B_URL"
+        rm -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml"
     fi
+else
+    echo "WARNING:  Could not download Site B config automatically"
+    echo "   Please download manually from Rancher UI:"
+    echo "   1. Go to Elemental → Registration Endpoints"
+    echo "   2. Click on 'site-b-registration'"
+    echo "   3. Download 'elemental_config.yaml'"
+    echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-b.yaml"
+    echo "   Registration URL: $SITE_B_URL"
 fi
 
 echo ""
@@ -198,10 +174,10 @@ echo ""
 # Verify files were downloaded
 if [ -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml" ]; then
     FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || echo "0")
-    if [ "$FILE_SIZE" -gt 100 ]; then
+    if [ "$FILE_SIZE" -gt 50 ]; then
         echo "OK: Site A config file exists and has content ($FILE_SIZE bytes)"
     else
-        echo "WARNING:  Site A config file exists but seems empty"
+        echo "WARNING:  Site A config file exists but seems too small ($FILE_SIZE bytes)"
     fi
 else
     echo "ERROR: Site A config file not found"
@@ -209,10 +185,10 @@ fi
 
 if [ -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml" ]; then
     FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || echo "0")
-    if [ "$FILE_SIZE" -gt 100 ]; then
+    if [ "$FILE_SIZE" -gt 50 ]; then
         echo "OK: Site B config file exists and has content ($FILE_SIZE bytes)"
     else
-        echo "WARNING:  Site B config file exists but seems empty"
+        echo "WARNING:  Site B config file exists but seems too small ($FILE_SIZE bytes)"
     fi
 else
     echo "ERROR: Site B config file not found"

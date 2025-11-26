@@ -289,6 +289,15 @@ if [ -n "$KUBECONFIG_FOUND" ] && kubectl cluster-info &>/dev/null 2>&1; then
         echo "  No GitRepos found"
     fi
     
+    echo ""
+    echo "Cleaning up Git Secret..."
+    if kubectl get secret -n fleet-default gitea-credentials &>/dev/null; then
+        kubectl delete secret -n fleet-default gitea-credentials --wait=false 2>/dev/null || true
+        echo -e "  ${GREEN}OK:${NC} Git secret deleted"
+    else
+        echo "  No git secret found"
+    fi
+    
     echo -e "${GREEN}OK:${NC} Fleet resources cleanup complete"
 else
     echo -e "${YELLOW}WARNING:${NC}  Kubeconfig not available, skipping Fleet resource cleanup"

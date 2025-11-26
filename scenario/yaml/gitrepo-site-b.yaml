@@ -5,7 +5,8 @@ metadata:
   namespace: fleet-default
 spec:
   repo: http://gitea.cledorze.lan/nostromo/Edge-3.4.git
-  branch: master
+  branch: main
+  clientSecretName: gitea-credentials
   paths:
     - fleet/demo-workload-site-b
   targets:

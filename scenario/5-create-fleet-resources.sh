@@ -36,6 +36,7 @@ fi
 REQUIRED_FILES=(
     "$YAML_DIR/clustergroup-site-a.yaml"
     "$YAML_DIR/clustergroup-site-b.yaml"
+    "$YAML_DIR/git-secret.yaml"
     "$YAML_DIR/gitrepo-site-a.yaml"
     "$YAML_DIR/gitrepo-site-b.yaml"
 )
@@ -58,6 +59,14 @@ echo ""
 echo "Applying clustergroup-site-b..."
 kubectl apply -f "$YAML_DIR/clustergroup-site-b.yaml"
 echo "OK: clustergroup-site-b created"
+
+echo ""
+echo "=== Creating Git Secret ==="
+echo ""
+
+echo "Creating git secret for Gitea authentication..."
+kubectl apply -f "$YAML_DIR/git-secret.yaml"
+echo "OK: git secret created"
 
 echo ""
 echo "=== Applying GitRepos ==="
