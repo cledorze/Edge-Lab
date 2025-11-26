@@ -114,11 +114,13 @@ mkdir -p "$ELEMENTAL_DIR"
 
 echo "Downloading elemental_config for Site A..."
 
+SITE_A_DOWNLOADED=false
 # The registration URL itself returns the YAML config when accessed with proper headers
 if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_config-site-a.yaml" "$SITE_A_URL" 2>/dev/null; then
     FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || echo "0")
     if [ "$FILE_SIZE" -gt 50 ]; then
         echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-a.yaml ($FILE_SIZE bytes)"
+        SITE_A_DOWNLOADED=true
     else
         echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
         echo "   Please download manually from Rancher UI:"
@@ -142,11 +144,13 @@ fi
 echo ""
 echo "Downloading elemental_config for Site B..."
 
+SITE_B_DOWNLOADED=false
 # The registration URL itself returns the YAML config when accessed with proper headers
 if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_config-site-b.yaml" "$SITE_B_URL" 2>/dev/null; then
     FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || echo "0")
     if [ "$FILE_SIZE" -gt 50 ]; then
         echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-b.yaml ($FILE_SIZE bytes)"
+        SITE_B_DOWNLOADED=true
     else
         echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
         echo "   Please download manually from Rancher UI:"
@@ -178,9 +182,11 @@ if [ -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml" ]; then
         echo "OK: Site A config file exists and has content ($FILE_SIZE bytes)"
     else
         echo "WARNING:  Site A config file exists but seems too small ($FILE_SIZE bytes)"
+        SITE_A_DOWNLOADED=false
     fi
 else
     echo "ERROR: Site A config file not found"
+    SITE_A_DOWNLOADED=false
 fi
 
 if [ -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml" ]; then
@@ -189,9 +195,70 @@ if [ -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml" ]; then
         echo "OK: Site B config file exists and has content ($FILE_SIZE bytes)"
     else
         echo "WARNING:  Site B config file exists but seems too small ($FILE_SIZE bytes)"
+        SITE_B_DOWNLOADED=false
     fi
 else
     echo "ERROR: Site B config file not found"
+    SITE_B_DOWNLOADED=false
+fi
+
+echo ""
+echo "=== Step 5: Committing to Git ==="
+echo ""
+
+# Commit and push downloaded config files to git
+if [ "$SITE_A_DOWNLOADED" = true ] || [ "$SITE_B_DOWNLOADED" = true ]; then
+    if command -v git &> /dev/null && [ -d "$PROJECT_ROOT/.git" ]; then
+        cd "$PROJECT_ROOT"
+        
+        # Check if there are changes to commit
+        FILES_TO_COMMIT=""
+        if [ "$SITE_A_DOWNLOADED" = true ] && [ -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml" ]; then
+            FILES_TO_COMMIT="$FILES_TO_COMMIT $ELEMENTAL_DIR/elemental_config-site-a.yaml"
+        fi
+        if [ "$SITE_B_DOWNLOADED" = true ] && [ -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml" ]; then
+            FILES_TO_COMMIT="$FILES_TO_COMMIT $ELEMENTAL_DIR/elemental_config-site-b.yaml"
+        fi
+        
+        if [ -n "$FILES_TO_COMMIT" ]; then
+            # Check if files have changes
+            if git status --porcelain $FILES_TO_COMMIT | grep -q .; then
+                echo "Committing elemental config files to git..."
+                git add $FILES_TO_COMMIT 2>/dev/null || true
+            
+                COMMIT_MSG="Update elemental config files from registration endpoints"
+                if [ "$SITE_A_DOWNLOADED" = true ] && [ "$SITE_B_DOWNLOADED" = true ]; then
+                    COMMIT_MSG="$COMMIT_MSG (Site A and Site B)"
+                elif [ "$SITE_A_DOWNLOADED" = true ]; then
+                    COMMIT_MSG="$COMMIT_MSG (Site A)"
+                else
+                    COMMIT_MSG="$COMMIT_MSG (Site B)"
+                fi
+                
+                if git commit -m "$COMMIT_MSG" 2>/dev/null; then
+                    echo "OK: Committed elemental config files"
+                    
+                    # Try to push (may fail if remote is not configured or no network)
+                    if git push origin main 2>/dev/null; then
+                        echo "OK: Pushed elemental config files to remote repository"
+                    else
+                        echo "WARNING:  Could not push to remote repository (may need manual push)"
+                        echo "   Run: cd $PROJECT_ROOT && git push origin main"
+                    fi
+                else
+                    echo "WARNING:  No changes to commit (files may already be up to date)"
+                fi
+            else
+                echo "OK: No changes to commit (files already up to date)"
+            fi
+        else
+            echo "WARNING:  No files to commit (download may have failed)"
+        fi
+    else
+        echo "WARNING:  Git not available or not in a git repository, skipping commit"
+    fi
+else
+    echo "WARNING:  No config files were downloaded successfully, skipping git commit"
 fi
 
 echo ""
