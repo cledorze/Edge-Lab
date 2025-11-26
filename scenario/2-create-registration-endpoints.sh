@@ -213,11 +213,13 @@ if [ "$SITE_A_DOWNLOADED" = true ] || [ "$SITE_B_DOWNLOADED" = true ]; then
         
         # Check if there are changes to commit
         FILES_TO_COMMIT=""
+        # Use relative paths from project root for git commands
+        REL_ELEMENTAL_DIR="generated/elemental"
         if [ "$SITE_A_DOWNLOADED" = true ] && [ -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml" ]; then
-            FILES_TO_COMMIT="$FILES_TO_COMMIT $ELEMENTAL_DIR/elemental_config-site-a.yaml"
+            FILES_TO_COMMIT="$FILES_TO_COMMIT $REL_ELEMENTAL_DIR/elemental_config-site-a.yaml"
         fi
         if [ "$SITE_B_DOWNLOADED" = true ] && [ -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml" ]; then
-            FILES_TO_COMMIT="$FILES_TO_COMMIT $ELEMENTAL_DIR/elemental_config-site-b.yaml"
+            FILES_TO_COMMIT="$FILES_TO_COMMIT $REL_ELEMENTAL_DIR/elemental_config-site-b.yaml"
         fi
         
         if [ -n "$FILES_TO_COMMIT" ]; then
