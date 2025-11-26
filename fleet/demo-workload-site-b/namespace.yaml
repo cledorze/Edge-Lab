@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-workload-site-b
+  labels:
+    app: demo-workload-site-b
+    site: site-b
+    managed-by: fleet
+
+

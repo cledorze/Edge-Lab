@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-workload-site-a
+  namespace: demo-workload-site-a
+  labels:
+    app: demo-workload-site-a
+    site: site-a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-workload-site-a
+  template:
+    metadata:
+      labels:
+        app: demo-workload-site-a
+        site: site-a
+    spec:
+      serviceAccountName: demo-workload-site-a
+      # nodeAffinity removed: Kubernetes node hostnames don't match expected pattern
+      # Nodes have hostnames like "m-<uuid>" instead of "node1-sitea", etc.
+      # Workloads will be scheduled on any available node in the cluster
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #       - matchExpressions:
+      #         - key: kubernetes.io/hostname
+      #           operator: In
+      #           values:
+      #           - node1-sitea
+      #           - node2-sitea
+      #           - node3-sitea
+      #           - node4-sitea
+      #           - node5-sitea
+      initContainers:
+      - name: inject-node-info
+        image: curlimages/curl:8.4.0
+        command:
+        - sh
+        - -c
+        - |
+          # Get node name and pod IP from environment
+          NODE_NAME=${NODE_NAME}
+          POD_IP=${POD_IP}
+          
+          # Get node IP and site-id from Kubernetes API
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          
+          # Get node information
+          NODE_INFO=$(curl -s -k -H "Authorization: Bearer $TOKEN" \
+            "https://kubernetes.default.svc/api/v1/nodes/${NODE_NAME}")
+          
+          # Extract node IP
+          if command -v jq >/dev/null 2>&1; then
+            NODE_IP=$(echo "$NODE_INFO" | jq -r '.status.addresses[] | select(.type=="InternalIP") | .address' 2>/dev/null || echo "unknown")
+            SITE_ID=$(echo "$NODE_INFO" | jq -r '.metadata.labels["site-id"] // "site-a"' 2>/dev/null || echo "site-a")
+          else
+            # Fallback: use grep and sed
+            NODE_IP=$(echo "$NODE_INFO" | grep -o '"addresses":\[{[^}]*"type":"InternalIP"[^}]*"address":"[^"]*"' \
+              | grep -o '"address":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            SITE_ID=$(echo "$NODE_INFO" | grep -o '"site-id":"[^"]*"' | cut -d'"' -f4 || echo "site-a")
+          fi
+          
+          # Final fallback for node IP
+          if [ "$NODE_IP" = "unknown" ] || [ -z "$NODE_IP" ]; then
+            NODE_IP=$(getent hosts ${NODE_NAME} 2>/dev/null | awk '{print $1}' | head -1 || echo "${NODE_NAME}")
+          fi
+          
+          # Ensure site-id is set (default to site-a for this workload)
+          if [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ]; then
+            SITE_ID="site-a"
+          fi
+          
+          # Debug output
+          echo "DEBUG: NODE_NAME=${NODE_NAME}"
+          echo "DEBUG: NODE_IP=${NODE_IP}"
+          echo "DEBUG: POD_IP=${POD_IP}"
+          echo "DEBUG: SITE_ID=${SITE_ID}"
+          
+          # Replace placeholders in template
+          sed -e "s|{{NODE_IP}}|$NODE_IP|g" \
+              -e "s|{{NODE_NAME}}|$NODE_NAME|g" \
+              -e "s|{{POD_IP}}|$POD_IP|g" \
+              -e "s|{{SITE_ID}}|$SITE_ID|g" \
+              /templates/index.html.template > /output/index.html
+          
+          # Verify replacement worked
+          if grep -q "{{NODE_IP}}" /output/index.html; then
+            echo "WARNING: NODE_IP placeholder not replaced!"
+            sed -i "s|{{NODE_IP}}|$NODE_IP|g" /output/index.html
+          fi
+          
+          echo "Verification: NODE_IP in HTML: $(grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' /output/index.html | head -1)"
+        volumeMounts:
+        - name: templates
+          mountPath: /templates
+        - name: output
+          mountPath: /output
+        - name: service-account
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+      containers:
+      - name: web
+        image: nginx:1.25-alpine
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: output
+          mountPath: /usr/share/nginx/html
+          readOnly: true
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+          readOnly: true
+      volumes:
+      - name: templates
+        configMap:
+          name: demo-workload-site-a-config
+          items:
+          - key: index.html.template
+            path: index.html.template
+      - name: output
+        emptyDir: {}
+      - name: nginx-config
+        configMap:
+          name: demo-workload-site-a-config
+          items:
+          - key: nginx.conf
+            path: default.conf
+      - name: service-account
+        projected:
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3600
+              path: token
+          - downwardAPI:
+              items:
+              - path: namespace
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+

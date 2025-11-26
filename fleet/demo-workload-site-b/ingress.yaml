@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-workload-site-b
+  namespace: demo-workload-site-b
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    # DYNAMIC HOSTNAME: This Ingress hostname is automatically updated by update-ingress-job.yaml
+    # Based on SUSE Edge 3.4 documentation recommendation (Section 24.6.1: "Ingress with MetalLB")
+    # The Job detects the Traefik LoadBalancer IP and patches this Ingress
+    # Format: demo-workload-site-b.<TRAEFIK_LOADBALANCER_IP>.sslip.io
+    # Reference: https://documentation.suse.com/suse-edge/3.4/html/edge/kubernetes-metallb.html#_ingress_with_metallb
+    # For single-node clusters, this is typically the node IP
+    # For multi-node clusters, this is the VIP or LoadBalancer IP assigned by MetalLB
+spec:
+  ingressClassName: traefik
+  rules:
+  # Placeholder hostname - will be updated by update-ingress-job.yaml with actual Traefik LoadBalancer IP
+  # Format: demo-workload-site-b.<TRAEFIK_LOADBALANCER_IP>.sslip.io
+  - host: demo-workload-site-b.placeholder.sslip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo-workload-site-b
+            port:
+              number: 80
+

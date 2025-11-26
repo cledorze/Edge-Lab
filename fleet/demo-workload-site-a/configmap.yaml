@@ -1,0 +1,196 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-workload-site-a-config
+  namespace: demo-workload-site-a
+data:
+  index.html.template: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Site A - Elemental Workload</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .container {
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 20px;
+                padding: 40px;
+                max-width: 800px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                animation: fadeIn 0.5s ease-in;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .header h1 {
+                color: #667eea;
+                font-size: 2.5em;
+                margin-bottom: 10px;
+            }
+            .site-badge {
+                display: inline-block;
+                background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                color: white;
+                padding: 10px 25px;
+                border-radius: 25px;
+                font-weight: bold;
+                font-size: 1.1em;
+                box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+            .info-card {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 15px;
+                padding: 25px;
+                margin: 20px 0;
+                border-left: 5px solid #667eea;
+            }
+            .info-card h2 {
+                color: #333;
+                margin-bottom: 15px;
+                font-size: 1.5em;
+            }
+            .info-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 0;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            }
+            .info-item:last-child {
+                border-bottom: none;
+            }
+            .info-label {
+                font-weight: 600;
+                color: #555;
+            }
+            .info-value {
+                color: #667eea;
+                font-weight: bold;
+                font-family: 'Courier New', monospace;
+            }
+            .highlight-box {
+                font-size: 1.8em;
+                color: #4CAF50;
+                text-align: center;
+                padding: 20px;
+                background: rgba(76, 175, 80, 0.1);
+                border-radius: 10px;
+                margin: 20px 0;
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🏭 Site A - Workload</h1>
+                <div class="site-badge">✓ Site A Operational</div>
+            </div>
+            
+            <div class="info-card">
+                <h2>📍 Site Information</h2>
+                <div class="highlight-box" id="site-name">Site A</div>
+                <div class="info-item">
+                    <span class="info-label">Site ID:</span>
+                    <span class="info-value">site-a</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h2>🖥️ Node Information</h2>
+                <div class="info-item">
+                    <span class="info-label">Node Name:</span>
+                    <span class="info-value">{{NODE_NAME}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Node IP:</span>
+                    <span class="info-value" id="node-ip">{{NODE_IP}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Pod IP:</span>
+                    <span class="info-value">{{POD_IP}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Namespace:</span>
+                    <span class="info-value">demo-workload-site-a</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h2>📊 Deployment Status</h2>
+                <div class="info-item">
+                    <span class="info-label">Status:</span>
+                    <span class="info-value">✓ Running</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Deployment:</span>
+                    <span class="info-value">demo-workload-site-a</span>
+                </div>
+            </div>
+
+            <div class="footer" style="text-align: center; margin-top: 30px; color: #666; font-size: 0.9em;">
+                <p>Deployed via SUSE Edge 3.4 - Elemental + Fleet GitOps</p>
+                <p id="timestamp"></p>
+            </div>
+        </div>
+
+        <script>
+            const nodeIP = '{{NODE_IP}}';
+            const nodeName = '{{NODE_NAME}}';
+            const podIP = '{{POD_IP}}';
+            
+            const nodeIPElement = document.getElementById('node-ip');
+            if (nodeIPElement.textContent === '{{NODE_IP}}' || nodeIPElement.textContent === 'unknown') {
+                if (nodeIP && nodeIP !== '{{NODE_IP}}' && nodeIP !== 'unknown') {
+                    nodeIPElement.textContent = nodeIP;
+                    nodeIPElement.style.color = '#4CAF50';
+                } else {
+                    nodeIPElement.textContent = 'Unable to retrieve';
+                    nodeIPElement.style.color = '#f44336';
+                }
+            }
+            
+            document.getElementById('timestamp').textContent = 
+                'Last updated: ' + new Date().toLocaleString();
+        </script>
+    </body>
+    </html>
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+        
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+
+

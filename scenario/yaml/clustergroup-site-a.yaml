@@ -1,0 +1,20 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: ClusterGroup
+metadata:
+  name: demo-workload-site-a
+  namespace: fleet-default
+spec:
+  selector:
+    matchExpressions:
+    - key: site-id
+      operator: In
+      values:
+      - site-a-vm-01
+      - site-a-vm-02
+      - site-a-vm-03
+      - site-a-vm-04
+      - site-a-vm-05
+    matchLabels:
+      test-group: 2-sites-5-vms
+
+

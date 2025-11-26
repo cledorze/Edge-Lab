@@ -1,0 +1,14 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: demo-workload-site-b
+  namespace: fleet-default
+spec:
+  repo: http://gitea.cledorze.lan/nostromo/Edge-3.4.git
+  branch: master
+  paths:
+    - fleet/demo-workload-site-b
+  targets:
+    - clusterGroup: demo-workload-site-b
+
+

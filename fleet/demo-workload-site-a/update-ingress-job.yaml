@@ -1,0 +1,121 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: update-ingress-hostname
+  namespace: demo-workload-site-a
+  annotations:
+    # This job runs once to update the Ingress with the correct Traefik LoadBalancer IP
+    # Based on SUSE Edge 3.4 documentation recommendation (Section 24.6.1: "Ingress with MetalLB")
+    # Reference: https://documentation.suse.com/suse-edge/3.4/html/edge/kubernetes-metallb.html#_ingress_with_metallb
+spec:
+  # ttlSecondsAfterFinished removed: Fleet requires Jobs to persist to show as "Ready"
+  # The Job will remain after completion so Fleet can track it properly
+  backoffLimit: 3  # Allow 3 retries for transient failures (network, DNS, etc.)
+  template:
+    metadata:
+      labels:
+        app: update-ingress-hostname
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: demo-workload-site-a
+      containers:
+      - name: update-ingress
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "=== Updating Ingress hostname with Traefik LoadBalancer IP ==="
+          echo ""
+          
+          # Wait for Traefik LoadBalancer to be assigned
+          MAX_WAIT=120
+          WAITED=0
+          TRAEFIK_IP=""
+          
+          echo "Waiting for Traefik LoadBalancer to be assigned..."
+          while [ $WAITED -lt $MAX_WAIT ]; do
+            TRAEFIK_IP=$(kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+            
+            if [ -n "$TRAEFIK_IP" ] && [ "$TRAEFIK_IP" != "null" ] && [ "$TRAEFIK_IP" != "" ]; then
+              echo "✓ Traefik LoadBalancer IP found: $TRAEFIK_IP"
+              break
+            fi
+            
+            sleep 2
+            WAITED=$((WAITED + 2))
+            echo "Waiting for Traefik LoadBalancer IP... (${WAITED}s/${MAX_WAIT}s)"
+          done
+          
+          if [ -z "$TRAEFIK_IP" ] || [ "$TRAEFIK_IP" = "null" ] || [ "$TRAEFIK_IP" = "" ]; then
+            echo "ERROR: Could not get Traefik LoadBalancer IP after ${MAX_WAIT} seconds"
+            echo "The Ingress will need to be updated manually"
+            exit 1
+          fi
+          
+          # Get current Ingress
+          INGRESS_NAME="demo-workload-site-a"
+          NAMESPACE="demo-workload-site-a"
+          CURRENT_HOST=$(kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+          NEW_HOST="demo-workload-site-a.${TRAEFIK_IP}.sslip.io"
+          
+          if [ "$CURRENT_HOST" = "$NEW_HOST" ]; then
+            echo "✓ Ingress hostname is already correct: $NEW_HOST"
+            exit 0
+          fi
+          
+          # Check if Ingress has any rules
+          RULE_COUNT=$(kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o jsonpath='{.spec.rules[*].host}' 2>/dev/null | wc -w || echo "0")
+          
+          if [ "$RULE_COUNT" = "0" ] || [ -z "$CURRENT_HOST" ]; then
+            # Ingress has no rules, add the first rule
+            echo "Adding Ingress rule with hostname: $NEW_HOST"
+            kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type='json' -p="[
+              {\"op\": \"add\", \"path\": \"/spec/rules\", \"value\": [
+                {
+                  \"host\": \"$NEW_HOST\",
+                  \"http\": {
+                    \"paths\": [
+                      {
+                        \"path\": \"/\",
+                        \"pathType\": \"Prefix\",
+                        \"backend\": {
+                          \"service\": {
+                            \"name\": \"demo-workload-site-a\",
+                            \"port\": {\"number\": 80}
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]}
+            ]" && {
+              echo "✓ Ingress rule added successfully"
+              echo "✓ Access URL: http://$NEW_HOST"
+            } || {
+              echo "ERROR: Failed to add Ingress rule"
+              exit 1
+            }
+          else
+            # Ingress has rules, update the first rule's hostname
+            echo "Updating Ingress hostname from $CURRENT_HOST to $NEW_HOST"
+            kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type='json' -p="[
+              {\"op\": \"replace\", \"path\": \"/spec/rules/0/host\", \"value\": \"$NEW_HOST\"}
+            ]" && {
+              echo "✓ Ingress updated successfully"
+              echo "✓ Access URL: http://$NEW_HOST"
+            } || {
+              echo "ERROR: Failed to update Ingress"
+              exit 1
+            }
+          fi
+          
+          # Verify update
+          VERIFIED_HOST=$(kubectl get ingress $INGRESS_NAME -n demo-workload-site-a -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+          if [ "$VERIFIED_HOST" = "$NEW_HOST" ]; then
+            echo "✓ Verification successful: Ingress hostname is $VERIFIED_HOST"
+          else
+            echo "⚠ Warning: Verification failed. Expected $NEW_HOST, got $VERIFIED_HOST"
+          fi

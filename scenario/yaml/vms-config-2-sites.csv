@@ -1,0 +1,12 @@
+site-name,namespace,distro,k8s-version,cp-nodes,worker-nodes,single-node,vip,labels
+site-a-vm-01,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-a,test-group=2-sites-5-vms,hostname=node1-sitea
+site-a-vm-02,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-a,test-group=2-sites-5-vms,hostname=node2-sitea
+site-a-vm-03,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-a,test-group=2-sites-5-vms,hostname=node3-sitea
+site-a-vm-04,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-a,test-group=2-sites-5-vms,hostname=node4-sitea
+site-a-vm-05,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-a,test-group=2-sites-5-vms,hostname=node5-sitea
+site-b-vm-01,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-b,test-group=2-sites-5-vms,hostname=node1-siteb
+site-b-vm-02,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-b,test-group=2-sites-5-vms,hostname=node2-siteb
+site-b-vm-03,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-b,test-group=2-sites-5-vms,hostname=node3-siteb
+site-b-vm-04,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-b,test-group=2-sites-5-vms,hostname=node4-siteb
+site-b-vm-05,fleet-default,k3s,v1.33.5+k3s1,1,0,true,,site-id=site-b,test-group=2-sites-5-vms,hostname=node5-siteb
+
