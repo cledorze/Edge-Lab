@@ -7,6 +7,31 @@
 
 set -e
 
+# Trap to ensure cleanup happens even on error
+# Note: Files are COPIED (not moved) so originals remain safe
+cleanup() {
+    local exit_code=$?
+    
+    # Restore EIB elemental directory files if backed up
+    if [ -n "$EIB_ELEMENTAL_BACKUP_DIR" ] && [ -d "$EIB_ELEMENTAL_BACKUP_DIR" ] && [ -n "$(ls -A "$EIB_ELEMENTAL_BACKUP_DIR" 2>/dev/null)" ]; then
+        log_info "Restoring EIB elemental directory files..."
+        if [ -n "$EIB_ELEMENTAL_DIR" ] && [ -d "$EIB_ELEMENTAL_DIR" ]; then
+            mv "$EIB_ELEMENTAL_BACKUP_DIR"/* "$EIB_ELEMENTAL_DIR/" 2>/dev/null || true
+        fi
+    fi
+    
+    if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        log_info "Cleaning up temporary files..."
+        # Remove temporary directory (originals are safe since we copied, not moved)
+        rm -rf "$TEMP_DIR"
+    fi
+    if [ $exit_code -ne 0 ]; then
+        log_error "Script failed with exit code $exit_code"
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -99,21 +124,26 @@ fi
 TEMP_DIR=$(mktemp -d)
 log_info "Temporary directory for config files: $TEMP_DIR"
 
+# Initialize EIB elemental directory variables (needed for cleanup)
+EIB_ELEMENTAL_DIR="${EIB_DIR}/elemental"
+EIB_ELEMENTAL_BACKUP_DIR="${TEMP_DIR}/eib_elemental_backup"
+
 # Store paths to configs before moving them
 CONFIG_A_TEMP="$TEMP_DIR/elemental_config-site-a.yaml"
 CONFIG_B_TEMP="$TEMP_DIR/elemental_config-site-b.yaml"
 
-# Move ALL config files to temp directory (EIB requires only one file)
-log_info "Moving all config files temporarily (EIB requires only one file)"
+# Copy config files to temp directory (EIB requires only one file)
+# We COPY instead of MOVE to prevent data loss if script fails
+log_info "Copying config files to temporary location (EIB requires only one file)"
 if [ -f "$CONFIG_CURRENT" ]; then
-    mv "$CONFIG_CURRENT" "$TEMP_DIR/elemental_config.yaml.backup" 2>/dev/null || true
+    cp "$CONFIG_CURRENT" "$TEMP_DIR/elemental_config.yaml.backup" 2>/dev/null || true
 fi
-# Move Site A and Site B configs to temp (we'll restore them later)
+# Copy Site A and Site B configs to temp (we'll restore originals later)
 if [ -f "$CONFIG_A" ]; then
-    mv "$CONFIG_A" "$CONFIG_A_TEMP" 2>/dev/null || true
+    cp "$CONFIG_A" "$CONFIG_A_TEMP" 2>/dev/null || true
 fi
 if [ -f "$CONFIG_B" ]; then
-    mv "$CONFIG_B" "$CONFIG_B_TEMP" 2>/dev/null || true
+    cp "$CONFIG_B" "$CONFIG_B_TEMP" 2>/dev/null || true
 fi
 
 # Build Site A ISO
@@ -128,9 +158,17 @@ cd "$EIB_DIR"
 log_info "Running EIB build from: $(pwd)"
 log_info "Using build script: $EIB_BUILD_SCRIPT"
 
-# Copy elemental config to EIB elemental directory
-EIB_ELEMENTAL_DIR="${EIB_DIR}/elemental"
+# Prepare EIB elemental directory (EIB requires ONLY elemental_config.yaml)
 mkdir -p "$EIB_ELEMENTAL_DIR"
+
+# Backup existing files in EIB elemental directory (if any)
+mkdir -p "$EIB_ELEMENTAL_BACKUP_DIR"
+if [ -d "$EIB_ELEMENTAL_DIR" ]; then
+    # Move all existing files to backup (except .gitkeep if it exists)
+    find "$EIB_ELEMENTAL_DIR" -maxdepth 1 -type f ! -name ".gitkeep" -exec mv {} "$EIB_ELEMENTAL_BACKUP_DIR/" \; 2>/dev/null || true
+fi
+
+# Copy the current config as elemental_config.yaml (EIB requires this exact name)
 cp "$CONFIG_CURRENT" "${EIB_ELEMENTAL_DIR}/elemental_config.yaml"
 
 # Run the build script
@@ -172,9 +210,17 @@ cd "$EIB_DIR"
 log_info "Running EIB build from: $(pwd)"
 log_info "Using build script: $EIB_BUILD_SCRIPT"
 
-# Copy elemental config to EIB elemental directory
-EIB_ELEMENTAL_DIR="${EIB_DIR}/elemental"
+# Prepare EIB elemental directory (EIB requires ONLY elemental_config.yaml)
 mkdir -p "$EIB_ELEMENTAL_DIR"
+
+# Backup existing files in EIB elemental directory (if any)
+mkdir -p "$EIB_ELEMENTAL_BACKUP_DIR"
+if [ -d "$EIB_ELEMENTAL_DIR" ]; then
+    # Move all existing files to backup (except .gitkeep if it exists)
+    find "$EIB_ELEMENTAL_DIR" -maxdepth 1 -type f ! -name ".gitkeep" -exec mv {} "$EIB_ELEMENTAL_BACKUP_DIR/" \; 2>/dev/null || true
+fi
+
+# Copy the current config as elemental_config.yaml (EIB requires this exact name)
 cp "$CONFIG_CURRENT" "${EIB_ELEMENTAL_DIR}/elemental_config.yaml"
 
 # Run the build script
@@ -200,18 +246,15 @@ else
     exit 1
 fi
 
-# Restore original config and other files
-log_info "Restoring original files"
+# Restore EIB elemental directory files (if backed up)
+if [ -d "$EIB_ELEMENTAL_BACKUP_DIR" ] && [ -n "$(ls -A "$EIB_ELEMENTAL_BACKUP_DIR" 2>/dev/null)" ]; then
+    log_info "Restoring EIB elemental directory files"
+    mv "$EIB_ELEMENTAL_BACKUP_DIR"/* "$EIB_ELEMENTAL_DIR/" 2>/dev/null || true
+fi
+
+# Clean up temporary files (originals are already in place since we copied, not moved)
+log_info "Cleaning up temporary files"
 rm -f "$CONFIG_CURRENT"
-if [ -f "$TEMP_DIR/elemental_config.yaml.backup" ]; then
-    mv "$TEMP_DIR/elemental_config.yaml.backup" "$CONFIG_CURRENT" 2>/dev/null || true
-fi
-if [ -f "$CONFIG_A_TEMP" ]; then
-    mv "$CONFIG_A_TEMP" "$CONFIG_A" 2>/dev/null || true
-fi
-if [ -f "$CONFIG_B_TEMP" ]; then
-    mv "$CONFIG_B_TEMP" "$CONFIG_B" 2>/dev/null || true
-fi
 rm -rf "$TEMP_DIR"
 
 echo ""
