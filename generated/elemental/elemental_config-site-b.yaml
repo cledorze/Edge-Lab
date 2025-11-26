@@ -1,6 +1,6 @@
 elemental:
     registration:
-        url: https://rancher.cledorze.lan/elemental/registration/wkxzx8f5xp9hphsg4tj895wjklbvrgg7ltnqwvn9458ls5l6vhtllr
+        url: https://rancher.cledorze.lan/elemental/registration/knm6wkb26p9t668z7zqfrfh5td8r9rw6sbvxvtgs82zwkn4j8ctbvq
         ca-cert: |-
             -----BEGIN CERTIFICATE-----
             MIIBvTCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj
