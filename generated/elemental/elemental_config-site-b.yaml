@@ -1,0 +1,16 @@
+elemental:
+    registration:
+        url: https://rancher.cledorze.lan/elemental/registration/wkxzx8f5xp9hphsg4tj895wjklbvrgg7ltnqwvn9458ls5l6vhtllr
+        ca-cert: |-
+            -----BEGIN CERTIFICATE-----
+            MIIBvTCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj
+            bGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTc0MDU2
+            ODUxNDAeFw0yNTAyMjYxMTE1MTRaFw0zNTAyMjQxMTE1MTRaMEYxHDAaBgNVBAoT
+            E2R5bmFtaWNsaXN0ZW5lci1vcmcxJjAkBgNVBAMMHWR5bmFtaWNsaXN0ZW5lci1j
+            YUAxNzQwNTY4NTE0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4Ux7lxLasfa
+            PKXPIZMPm49BPbXaoaW5BE5WuwY3fNWdbVMdijHyS1y4zFP3FpUQ2Qntj0Ca3jwe
+            9J4E3XSzP6NCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD
+            VR0OBBYEFINkdXkGybn9VZoFdMX//obff/G6MAoGCCqGSM49BAMCA0gAMEUCID+v
+            eLPjXFv1j8DouSnUGHeywkmmCxp6a3Dt3SaYpyLLAiEAhgUFvQlGlUtwFRWGL/Ih
+            UYxXqnzEr2wk3bjoxT0YMUM=
+            -----END CERTIFICATE-----
