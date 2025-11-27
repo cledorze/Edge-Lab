@@ -120,6 +120,58 @@ if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_conf
     FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || echo "0")
     if [ "$FILE_SIZE" -gt 50 ]; then
         echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-a.yaml ($FILE_SIZE bytes)"
+        
+        # Add install section if missing (Rancher registration endpoint only returns registration section)
+        # Check if install section exists
+        if ! grep -q "install:" "$ELEMENTAL_DIR/elemental_config-site-a.yaml"; then
+            echo "  Adding install section (required for K3s deployment)..."
+            # Extract registration section (everything from "registration:" onwards, preserving indentation)
+            REGISTRATION_LINE=$(grep -n "registration:" "$ELEMENTAL_DIR/elemental_config-site-a.yaml" | head -1 | cut -d: -f1)
+            if [ -n "$REGISTRATION_LINE" ]; then
+                # Get everything from registration line onwards
+                tail -n +$REGISTRATION_LINE "$ELEMENTAL_DIR/elemental_config-site-a.yaml" > "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp"
+            else
+                # Fallback: use entire file
+                cat "$ELEMENTAL_DIR/elemental_config-site-a.yaml" > "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp"
+            fi
+            
+            # Create complete config with install section first
+            cat > "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp" << 'EOF'
+elemental:
+    install:
+        device: ""  # Auto-detected: first disk matching selector
+        device-selector:
+            - key: Name
+              operator: In
+              values:
+                  - /dev/sda
+                  - /dev/vda
+                  - /dev/nvme0
+            - key: Size
+              operator: Gt
+              values:
+                  - 20Gi
+        reboot: true
+        snapshotter:
+            type: btrfs
+EOF
+            # Append registration section (preserve original indentation)
+            cat "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp" >> "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp"
+            rm -f "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp"
+            
+            # Add reset section if not present
+            if ! grep -q "reset:" "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp"; then
+                cat >> "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp" << 'EOF'
+    reset:
+        reboot: true
+        reset-oem: true
+        reset-persistent: true
+EOF
+            fi
+            mv "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp" "$ELEMENTAL_DIR/elemental_config-site-a.yaml"
+            echo "  OK: Install section added"
+        fi
+        
         SITE_A_DOWNLOADED=true
     else
         echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
@@ -150,6 +202,58 @@ if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_conf
     FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || echo "0")
     if [ "$FILE_SIZE" -gt 50 ]; then
         echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-b.yaml ($FILE_SIZE bytes)"
+        
+        # Add install section if missing (Rancher registration endpoint only returns registration section)
+        # Check if install section exists
+        if ! grep -q "install:" "$ELEMENTAL_DIR/elemental_config-site-b.yaml"; then
+            echo "  Adding install section (required for K3s deployment)..."
+            # Extract registration section (everything from "registration:" onwards, preserving indentation)
+            REGISTRATION_LINE=$(grep -n "registration:" "$ELEMENTAL_DIR/elemental_config-site-b.yaml" | head -1 | cut -d: -f1)
+            if [ -n "$REGISTRATION_LINE" ]; then
+                # Get everything from registration line onwards
+                tail -n +$REGISTRATION_LINE "$ELEMENTAL_DIR/elemental_config-site-b.yaml" > "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp"
+            else
+                # Fallback: use entire file
+                cat "$ELEMENTAL_DIR/elemental_config-site-b.yaml" > "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp"
+            fi
+            
+            # Create complete config with install section first
+            cat > "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp" << 'EOF'
+elemental:
+    install:
+        device: ""  # Auto-detected: first disk matching selector
+        device-selector:
+            - key: Name
+              operator: In
+              values:
+                  - /dev/sda
+                  - /dev/vda
+                  - /dev/nvme0
+            - key: Size
+              operator: Gt
+              values:
+                  - 20Gi
+        reboot: true
+        snapshotter:
+            type: btrfs
+EOF
+            # Append registration section (preserve original indentation)
+            cat "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp" >> "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp"
+            rm -f "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp"
+            
+            # Add reset section if not present
+            if ! grep -q "reset:" "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp"; then
+                cat >> "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp" << 'EOF'
+    reset:
+        reboot: true
+        reset-oem: true
+        reset-persistent: true
+EOF
+            fi
+            mv "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp" "$ELEMENTAL_DIR/elemental_config-site-b.yaml"
+            echo "  OK: Install section added"
+        fi
+        
         SITE_B_DOWNLOADED=true
     else
         echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
@@ -294,7 +398,8 @@ echo "     - Click on each endpoint and download elemental_config.yaml"
 echo "     - Save as: $ELEMENTAL_DIR/elemental_config-site-a.yaml"
 echo "     - Save as: $ELEMENTAL_DIR/elemental_config-site-b.yaml"
 echo ""
-echo "  2. Proceed with Step 2 of DEPLOYMENT-GUIDE.md: Build ISOs"
-echo "     cd $PROJECT_ROOT"
-echo "     ./build-isos-2-sites.sh"
+echo "  2. Proceed with Step 3 of DEPLOYMENT-GUIDE.md: Build ISOs"
+echo "     These config files are REQUIRED for building the ISOs"
+echo "     cd $SCRIPT_DIR"
+echo "     ./3-build-isos-2-sites.sh"
 

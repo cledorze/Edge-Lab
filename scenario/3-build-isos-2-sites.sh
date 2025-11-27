@@ -1,9 +1,19 @@
 #!/bin/bash
 # Script to build EIB ISOs for 2 sites (Site A and Site B)
-# This script requires generated/elemental/elemental_config-site-a.yaml and generated/elemental/elemental_config-site-b.yaml
-# These files must be created from Rancher Registration Endpoints first
 #
-# Usage: ./build-isos-2-sites.sh
+# PREREQUISITES:
+#   - generated/elemental/elemental_config-site-a.yaml (REQUIRED)
+#   - generated/elemental/elemental_config-site-b.yaml (REQUIRED)
+#   These files are created by 2-create-registration-endpoints.sh (Step 2)
+#   They contain the registration endpoints and CA certificates needed for ISO build
+#
+# Usage: ./3-build-isos-2-sites.sh
+#
+# This script:
+#   1. Verifies both config files exist
+#   2. Builds ISO for Site A using elemental_config-site-a.yaml
+#   3. Builds ISO for Site B using elemental_config-site-b.yaml
+#   4. Outputs ISOs to output/vm-rancher-fleet-scale-site-a.iso and output/vm-rancher-fleet-scale-site-b.iso
 
 set -e
 
@@ -62,6 +72,10 @@ ISO_B="${OUTPUT_DIR}/vm-rancher-fleet-scale-site-b.iso"
 
 log_info "Building EIB ISOs for 2 Sites"
 echo ""
+log_info "Using Elemental config files:"
+log_info "  Site A: $CONFIG_A"
+log_info "  Site B: $CONFIG_B"
+echo ""
 
 # Check and setup EIB directory
 setup_eib() {
@@ -106,17 +120,25 @@ setup_eib
 mkdir -p "$OUTPUT_DIR"
 
 # Check if config files exist BEFORE moving anything
+# These files are REQUIRED for building the ISOs - they contain the registration endpoints
+# and are created by 2-create-registration-endpoints.sh (Step 2)
 if [ ! -f "$CONFIG_A" ]; then
     log_error "Configuration file not found: $CONFIG_A"
-    log_info "Please create this file from Rancher Registration Endpoint 'site-a-registration'"
-    log_info "See BUILD-ISOS-2-SITES.md for instructions"
+    log_error "This file is REQUIRED for building Site A ISO"
+    log_info "Please run Step 2 first to create registration endpoints and download config files:"
+    log_info "  export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+    log_info "  ./2-create-registration-endpoints.sh"
+    log_info "Or see DEPLOYMENT-GUIDE.md Step 2 for manual instructions"
     exit 1
 fi
 
 if [ ! -f "$CONFIG_B" ]; then
     log_error "Configuration file not found: $CONFIG_B"
-    log_info "Please create this file from Rancher Registration Endpoint 'site-b-registration'"
-    log_info "See BUILD-ISOS-2-SITES.md for instructions"
+    log_error "This file is REQUIRED for building Site B ISO"
+    log_info "Please run Step 2 first to create registration endpoints and download config files:"
+    log_info "  export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+    log_info "  ./2-create-registration-endpoints.sh"
+    log_info "Or see DEPLOYMENT-GUIDE.md Step 2 for manual instructions"
     exit 1
 fi
 
@@ -150,7 +172,8 @@ fi
 echo "=========================================="
 log_info "Building ISO for Site A"
 echo "=========================================="
-log_info "Using config from: $CONFIG_A_TEMP"
+log_info "Using Elemental config: $CONFIG_A"
+log_info "This config contains the registration endpoint and CA certificate for Site A"
 cp "$CONFIG_A_TEMP" "$CONFIG_CURRENT"
 
 # Change to EIB directory for build
@@ -200,7 +223,8 @@ echo ""
 echo "=========================================="
 log_info "Building ISO for Site B"
 echo "=========================================="
-log_info "Using config from: $CONFIG_B_TEMP"
+log_info "Using Elemental config: $CONFIG_B"
+log_info "This config contains the registration endpoint and CA certificate for Site B"
 # Remove Site A config and use Site B
 rm -f "$CONFIG_CURRENT"
 cp "$CONFIG_B_TEMP" "$CONFIG_CURRENT"

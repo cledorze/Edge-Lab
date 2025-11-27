@@ -69,8 +69,8 @@ export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 All scripts are numbered according to their step in the deployment process:
 
 - **1-cleanup-vms.sh**: Removes all VMs, ISOs, and Rancher/Fleet resources
-- **2-create-registration-endpoints.sh**: Creates MachineRegistrations and downloads Elemental config files
-- **3-build-isos-2-sites.sh**: Builds ISOs with Elemental configuration for both sites
+- **2-create-registration-endpoints.sh**: Creates MachineRegistrations and downloads Elemental config files (REQUIRED before Step 3)
+- **3-build-isos-2-sites.sh**: Builds ISOs with Elemental configuration for both sites (REQUIRES config files from Step 2)
 - **4-create-rancher-resources.sh**: Creates MachineInventorySelectorTemplates and Clusters (requires ztp-precreate.sh)
 - **5-create-fleet-resources.sh**: Creates Fleet ClusterGroups and GitRepos
 - **6-create-vms-2-sites.sh**: Creates and starts all 10 VMs

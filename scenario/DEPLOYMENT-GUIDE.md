@@ -58,9 +58,16 @@ Removes all VMs, ISOs, and Rancher/Fleet resources.
 
 ***** Important *****: This step must be done **on the Rancher server** before building ISOs.
 
-**Prerequisites**: Before building ISOs, you must have the Elemental configuration files:
-- `generated/elemental/elemental_config-site-a.yaml` (from Rancher Registration Endpoint for Site A)
-- `generated/elemental/elemental_config-site-b.yaml` (from Rancher Registration Endpoint for Site B)
+**Prerequisites**: Before building ISOs (Step 3), you must have the Elemental configuration files:
+- `generated/elemental/elemental_config-site-a.yaml` (REQUIRED for Site A ISO build)
+- `generated/elemental/elemental_config-site-b.yaml` (REQUIRED for Site B ISO build)
+
+***** Why these files are needed *****: These configuration files contain:
+- Registration endpoint URLs (unique per site)
+- CA certificates for secure registration
+- Installation and reset configuration
+
+These are **embedded in the ISOs during build** (Step 3), so VMs can automatically register with Rancher when they boot.
 
 **If these files don't exist:**
 
@@ -121,13 +128,32 @@ Then download `elemental_config.yaml` from each endpoint manually and save as:
 
 After the registration endpoints are created and config files are downloaded, build the ISOs.
 
+***** Prerequisites *****: This step **REQUIRES** the following files (created in Step 2):
+- `generated/elemental/elemental_config-site-a.yaml` (REQUIRED for Site A ISO)
+- `generated/elemental/elemental_config-site-b.yaml` (REQUIRED for Site B ISO)
+
+These files contain the registration endpoints and CA certificates that are embedded in the ISOs during build.
+
 **Action:**
 ```bash
 cd /home/tofix/LAB/EIB-demo/scale-out-eib-elemental/test-10-VMs/scenario
 ./3-build-isos-2-sites.sh
 ```
 
+**What the script does:**
+1. Verifies both config files exist (exits with error if missing)
+2. Builds ISO for Site A using `elemental_config-site-a.yaml`
+3. Builds ISO for Site B using `elemental_config-site-b.yaml`
+4. Outputs ISOs to `output/vm-rancher-fleet-scale-site-a.iso` and `output/vm-rancher-fleet-scale-site-b.iso`
+
 ***** Duration *****: ~10 minutes. Builds ISOs with hostname mapping script for both sites.
+
+**If config files are missing:**
+The script will exit with an error message. Run Step 2 first:
+```bash
+export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+./2-create-registration-endpoints.sh
+```
 
 ---
 
