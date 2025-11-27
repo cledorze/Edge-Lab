@@ -4,7 +4,8 @@ metadata:
   name: update-ingress-hostname
   namespace: demo-workload-site-a
   annotations:
-    # This job runs once to update the Ingress with the correct Traefik LoadBalancer IP
+    # This job runs once to update the Ingress with the correct Ingress Controller IP
+    # Automatically detects Traefik LoadBalancer, nginx LoadBalancer, or falls back to node IP
     # Based on SUSE Edge 3.4 documentation recommendation (Section 24.6.1: "Ingress with MetalLB")
     # Reference: https://documentation.suse.com/suse-edge/3.4/html/edge/kubernetes-metallb.html#_ingress_with_metallb
 spec:
@@ -26,30 +27,63 @@ spec:
         - -c
         - |
           set -e
-          echo "=== Updating Ingress hostname with Traefik LoadBalancer IP ==="
+          echo "=== Updating Ingress hostname with Ingress Controller IP ==="
           echo ""
           
-          # Wait for Traefik LoadBalancer to be assigned
+          # Try to detect Ingress Controller type and get IP
           MAX_WAIT=120
           WAITED=0
-          TRAEFIK_IP=""
+          INGRESS_IP=""
           
-          echo "Waiting for Traefik LoadBalancer to be assigned..."
-          while [ $WAITED -lt $MAX_WAIT ]; do
-            TRAEFIK_IP=$(kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-            
-            if [ -n "$TRAEFIK_IP" ] && [ "$TRAEFIK_IP" != "null" ] && [ "$TRAEFIK_IP" != "" ]; then
-              echo "OK: Traefik LoadBalancer IP found: $TRAEFIK_IP"
-              break
+          echo "Detecting Ingress Controller..."
+          
+          # First, try Traefik LoadBalancer (for Traefik with MetalLB)
+          if kubectl get svc traefik -n kube-system &>/dev/null; then
+            echo "Found Traefik service, checking for LoadBalancer IP..."
+            while [ $WAITED -lt $MAX_WAIT ]; do
+              INGRESS_IP=$(kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+              
+              if [ -n "$INGRESS_IP" ] && [ "$INGRESS_IP" != "null" ] && [ "$INGRESS_IP" != "" ]; then
+                echo "OK: Traefik LoadBalancer IP found: $INGRESS_IP"
+                break
+              fi
+              
+              sleep 2
+              WAITED=$((WAITED + 2))
+              echo "Waiting for Traefik LoadBalancer IP... (${WAITED}s/${MAX_WAIT}s)"
+            done
+          fi
+          
+          # If no Traefik LoadBalancer, try nginx ingress controller LoadBalancer
+          if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ] || [ "$INGRESS_IP" = "" ]; then
+            echo "Traefik LoadBalancer not found, checking nginx ingress controller..."
+            # Try common nginx ingress controller service names
+            for svc_name in "rke2-ingress-nginx-controller" "ingress-nginx-controller" "nginx-ingress-controller"; do
+              if kubectl get svc "$svc_name" -n kube-system &>/dev/null; then
+                echo "Found $svc_name service, checking for LoadBalancer IP..."
+                INGRESS_IP=$(kubectl get svc "$svc_name" -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+                if [ -n "$INGRESS_IP" ] && [ "$INGRESS_IP" != "null" ] && [ "$INGRESS_IP" != "" ]; then
+                  echo "OK: nginx LoadBalancer IP found: $INGRESS_IP"
+                  break
+                fi
+              fi
+            done
+          fi
+          
+          # If still no LoadBalancer IP, use node IP (for single-node clusters or NodePort)
+          if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ] || [ "$INGRESS_IP" = "" ]; then
+            echo "No LoadBalancer IP found, using node IP (single-node cluster)..."
+            NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+            if [ -n "$NODE_NAME" ]; then
+              INGRESS_IP=$(kubectl get node "$NODE_NAME" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+              if [ -n "$INGRESS_IP" ]; then
+                echo "OK: Using node IP: $INGRESS_IP"
+              fi
             fi
-            
-            sleep 2
-            WAITED=$((WAITED + 2))
-            echo "Waiting for Traefik LoadBalancer IP... (${WAITED}s/${MAX_WAIT}s)"
-          done
+          fi
           
-          if [ -z "$TRAEFIK_IP" ] || [ "$TRAEFIK_IP" = "null" ] || [ "$TRAEFIK_IP" = "" ]; then
-            echo "ERROR: Could not get Traefik LoadBalancer IP after ${MAX_WAIT} seconds"
+          if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ] || [ "$INGRESS_IP" = "" ]; then
+            echo "ERROR: Could not determine Ingress Controller IP"
             echo "The Ingress will need to be updated manually"
             exit 1
           fi
@@ -58,7 +92,7 @@ spec:
           INGRESS_NAME="demo-workload-site-a"
           NAMESPACE="demo-workload-site-a"
           CURRENT_HOST=$(kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
-          NEW_HOST="demo-workload-site-a.${TRAEFIK_IP}.sslip.io"
+          NEW_HOST="demo-workload-site-a.${INGRESS_IP}.sslip.io"
           
           if [ "$CURRENT_HOST" = "$NEW_HOST" ]; then
             echo "OK: Ingress hostname is already correct: $NEW_HOST"
