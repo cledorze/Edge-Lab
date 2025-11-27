@@ -8,7 +8,7 @@ spec:
     spec:
       selector:
         matchLabels:
-          site-id: site-a-vm-04
+          site-id: site-a
           test-group: 2-sites-5-vms
           hostname: node4-sitea
 ---
@@ -17,6 +17,10 @@ kind: Cluster
 metadata:
   name: site-a-vm-04
   namespace: fleet-default
+  labels:
+    site-id: site-a
+    test-group: 2-sites-5-vms
+    hostname: node4-sitea
 spec:
   kubernetesVersion: v1.33.5+k3s1
   rkeConfig:
