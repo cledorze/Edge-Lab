@@ -147,12 +147,16 @@ validate_prerequisites() {
 }
 
 # Parse labels string into YAML format
-# Excludes 'site-id' as it's automatically added from site_name
+# Extracts site-id from labels if present, otherwise uses site_name
+# Returns: (site_id, other_labels_yaml)
 parse_labels() {
     local labels_str="$1"
+    local site_name="$2"  # Fallback if site-id not in labels
     local yaml_labels=""
+    local site_id="$site_name"  # Default to site_name
     
     if [ -z "$labels_str" ]; then
+        echo "$site_id"
         echo ""
         return
     fi
@@ -161,10 +165,12 @@ parse_labels() {
     for label in "${LABEL_ARRAY[@]}"; do
         IFS='=' read -ra LABEL_PAIR <<< "$label"
         if [ ${#LABEL_PAIR[@]} -eq 2 ]; then
-            # Skip site-id as it's already added from site_name
+            # Extract site-id if present
             if [ "${LABEL_PAIR[0]}" = "site-id" ]; then
+                site_id="${LABEL_PAIR[1]}"
                 continue
             fi
+            # Add other labels
             if [ -n "$yaml_labels" ]; then
                 yaml_labels="${yaml_labels}\n          ${LABEL_PAIR[0]}: ${LABEL_PAIR[1]}"
             else
@@ -173,6 +179,7 @@ parse_labels() {
         fi
     done
     
+    echo "$site_id"
     echo -e "$yaml_labels"
 }
 
@@ -180,10 +187,11 @@ parse_labels() {
 generate_selector_template() {
     local site_name="$1"
     local namespace="$2"
-    local labels_yaml="$3"
+    local site_id="$3"  # site-id from labels (or site_name as fallback)
+    local labels_yaml="$4"  # Other labels (excluding site-id)
     
-    # Build matchLabels section
-    local match_labels="          site-id: ${site_name}"
+    # Build matchLabels section using site-id from labels
+    local match_labels="          site-id: ${site_id}"
     if [ -n "$labels_yaml" ]; then
         # Labels already have correct indentation (10 spaces), just append
         match_labels="${match_labels}
@@ -331,11 +339,15 @@ create_site() {
     # Validate configuration
     validate_site_config "$site_name" "$cp_count" "$worker_count" "$single_node"
     
-    # Parse labels
-    local labels_yaml=$(parse_labels "$labels_str")
+    # Parse labels - extract site-id and other labels
+    local parse_result=$(parse_labels "$labels_str" "$site_name")
+    local site_id=$(echo "$parse_result" | head -n 1)
+    local labels_yaml=$(echo "$parse_result" | tail -n +2)
+    
+    log_debug "Using site-id: $site_id (from labels or site_name: $site_name)"
     
     # Generate YAML manifests
-    local selector_yaml=$(generate_selector_template "$site_name" "$namespace" "$labels_yaml")
+    local selector_yaml=$(generate_selector_template "$site_name" "$namespace" "$site_id" "$labels_yaml")
     local cluster_yaml=$(generate_cluster "$site_name" "$namespace" "$k8s_version" \
                                           "$cp_count" "$worker_count" "$single_node" "$vip")
     
