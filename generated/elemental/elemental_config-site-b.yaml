@@ -1,6 +1,22 @@
 elemental:
+    install:
+        device: ""  # Auto-detected: first disk matching selector
+        device-selector:
+            - key: Name
+              operator: In
+              values:
+                  - /dev/sda
+                  - /dev/vda
+                  - /dev/nvme0
+            - key: Size
+              operator: Gt
+              values:
+                  - 20Gi
+        reboot: true
+        snapshotter:
+            type: btrfs
     registration:
-        url: https://rancher.cledorze.lan/elemental/registration/knm6wkb26p9t668z7zqfrfh5td8r9rw6sbvxvtgs82zwkn4j8ctbvq
+        url: https://rancher.cledorze.lan/elemental/registration/rhsd4h7ncrqvfsp2l9pqd826bd84rzbnrds4wm4knrjphlxgghv8xr
         ca-cert: |-
             -----BEGIN CERTIFICATE-----
             MIIBvTCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj
@@ -14,3 +30,7 @@ elemental:
             eLPjXFv1j8DouSnUGHeywkmmCxp6a3Dt3SaYpyLLAiEAhgUFvQlGlUtwFRWGL/Ih
             UYxXqnzEr2wk3bjoxT0YMUM=
             -----END CERTIFICATE-----
+    reset:
+        reboot: true
+        reset-oem: true
+        reset-persistent: true
