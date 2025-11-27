@@ -91,13 +91,17 @@ check_prerequisites() {
     
     if [ ! -f "$ISO_SITE_A" ]; then
         log_error "ISO file not found: $ISO_SITE_A"
-        log_info "Build Site A ISO with: cd ../ && cp generated/elemental/elemental_config-site-a.yaml generated/elemental/elemental_config.yaml && ./build-eib-image.sh && mv output/vm-rancher-fleet-scale.iso output/vm-rancher-fleet-scale-site-a.iso"
+        log_info "Build ISOs using the automated script:"
+        log_info "  cd scenario && ./3-build-isos-2-sites.sh"
+        log_info "This script automatically handles copying the appropriate elemental config files."
         exit 1
     fi
     
     if [ ! -f "$ISO_SITE_B" ]; then
         log_error "ISO file not found: $ISO_SITE_B"
-        log_info "Build Site B ISO with: cd ../ && cp generated/elemental/elemental_config-site-b.yaml generated/elemental/elemental_config.yaml && ./build-eib-image.sh && mv output/vm-rancher-fleet-scale.iso output/vm-rancher-fleet-scale-site-b.iso"
+        log_info "Build ISOs using the automated script:"
+        log_info "  cd scenario && ./3-build-isos-2-sites.sh"
+        log_info "This script automatically handles copying the appropriate elemental config files."
         exit 1
     fi
     
