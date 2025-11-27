@@ -36,7 +36,29 @@ else
     
     echo "Labeling Fleet clusters..."
     for cluster in $FLEET_CLUSTERS; do
-        # Determine site-id from cluster name (site-a-vm-01 → site-a, site-b-vm-01 → site-b)
+        # Try to get labels from corresponding provisioning cluster first
+        PROV_LABELS=$(kubectl get cluster.provisioning.cattle.io "$cluster" -n fleet-default -o jsonpath='{.metadata.labels}' 2>/dev/null || echo "")
+        
+        if [ -n "$PROV_LABELS" ] && [ "$PROV_LABELS" != "null" ] && [ "$PROV_LABELS" != "{}" ]; then
+            # Extract site-id and test-group from provisioning cluster labels
+            SITE_ID=$(kubectl get cluster.provisioning.cattle.io "$cluster" -n fleet-default -o jsonpath='{.metadata.labels.site-id}' 2>/dev/null || echo "")
+            TEST_GROUP=$(kubectl get cluster.provisioning.cattle.io "$cluster" -n fleet-default -o jsonpath='{.metadata.labels.test-group}' 2>/dev/null || echo "")
+            
+            if [ -n "$SITE_ID" ] && [ -n "$TEST_GROUP" ]; then
+                echo "  Found labels from provisioning cluster: site-id=$SITE_ID, test-group=$TEST_GROUP"
+                kubectl label clusters.fleet.cattle.io "$cluster" -n fleet-default \
+                    "site-id=$SITE_ID" \
+                    "test-group=$TEST_GROUP" \
+                    --overwrite 2>/dev/null || {
+                    echo "  WARNING: Failed to label Fleet cluster $cluster"
+                    continue
+                }
+                echo "  OK: Fleet cluster $cluster labeled with site-id=$SITE_ID, test-group=$TEST_GROUP (copied from provisioning cluster)"
+                continue
+            fi
+        fi
+        
+        # Fallback: Determine site-id from cluster name (site-a-vm-01 → site-a, site-b-vm-01 → site-b)
         if [[ "$cluster" =~ ^site-a- ]]; then
             site_id="site-a"
         elif [[ "$cluster" =~ ^site-b- ]]; then
@@ -53,7 +75,7 @@ else
             echo "  WARNING: Failed to label Fleet cluster $cluster"
             continue
         }
-        echo "  OK: Fleet cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms"
+        echo "  OK: Fleet cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms (fallback method)"
     done
 fi
 

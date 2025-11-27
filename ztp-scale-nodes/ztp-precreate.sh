@@ -222,11 +222,28 @@ generate_cluster() {
     local worker_count="$5"
     local single_node="$6"
     local vip="$7"
+    local labels_str="$8"  # Labels string (e.g., "site-id=site-a,test-group=2-sites-5-vms")
     
     # Determine worker role based on single-node flag
     local worker_role="false"
     if [ "$single_node" = true ]; then
         worker_role="true"
+    fi
+    
+    # Build labels section for metadata
+    local labels_yaml=""
+    if [ -n "$labels_str" ]; then
+        IFS=',' read -ra LABEL_ARRAY <<< "$labels_str"
+        for label in "${LABEL_ARRAY[@]}"; do
+            IFS='=' read -ra LABEL_PAIR <<< "$label"
+            if [ ${#LABEL_PAIR[@]} -eq 2 ]; then
+                if [ -z "$labels_yaml" ]; then
+                    labels_yaml="  labels:\n    ${LABEL_PAIR[0]}: ${LABEL_PAIR[1]}"
+                else
+                    labels_yaml="${labels_yaml}\n    ${LABEL_PAIR[0]}: ${LABEL_PAIR[1]}"
+                fi
+            fi
+        done
     fi
     
     # Build machinePools
@@ -262,7 +279,15 @@ generate_cluster() {
 kind: Cluster
 metadata:
   name: ${site_name}
-  namespace: ${namespace}
+  namespace: ${namespace}"
+    
+    # Add labels if provided
+    if [ -n "$labels_yaml" ]; then
+        cluster_yaml="${cluster_yaml}
+$(echo -e "$labels_yaml")"
+    fi
+    
+    cluster_yaml="${cluster_yaml}
 spec:
   kubernetesVersion: ${k8s_version}
   rkeConfig:
@@ -349,7 +374,7 @@ create_site() {
     # Generate YAML manifests
     local selector_yaml=$(generate_selector_template "$site_name" "$namespace" "$site_id" "$labels_yaml")
     local cluster_yaml=$(generate_cluster "$site_name" "$namespace" "$k8s_version" \
-                                          "$cp_count" "$worker_count" "$single_node" "$vip")
+                                          "$cp_count" "$worker_count" "$single_node" "$vip" "$labels_str")
     
     # Combine manifests
     local combined_yaml="${selector_yaml}
