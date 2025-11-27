@@ -36,15 +36,24 @@ else
     
     echo "Labeling Fleet clusters..."
     for cluster in $FLEET_CLUSTERS; do
-        # site-id is the cluster name itself
+        # Determine site-id from cluster name (site-a-vm-01 → site-a, site-b-vm-01 → site-b)
+        if [[ "$cluster" =~ ^site-a- ]]; then
+            site_id="site-a"
+        elif [[ "$cluster" =~ ^site-b- ]]; then
+            site_id="site-b"
+        else
+            echo "  WARNING: Cannot determine site-id for cluster $cluster, skipping"
+            continue
+        fi
+        
         kubectl label clusters.fleet.cattle.io "$cluster" -n fleet-default \
-            "site-id=$cluster" \
+            "site-id=$site_id" \
             "test-group=2-sites-5-vms" \
             --overwrite 2>/dev/null || {
             echo "  WARNING: Failed to label Fleet cluster $cluster"
             continue
         }
-        echo "  OK: Fleet cluster $cluster labeled with site-id=$cluster, test-group=2-sites-5-vms"
+        echo "  OK: Fleet cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms"
     done
 fi
 
@@ -67,14 +76,24 @@ else
     
     echo "Labeling provisioning clusters..."
     for cluster in $PROVISIONING_CLUSTERS; do
+        # Determine site-id from cluster name (site-a-vm-01 → site-a, site-b-vm-01 → site-b)
+        if [[ "$cluster" =~ ^site-a- ]]; then
+            site_id="site-a"
+        elif [[ "$cluster" =~ ^site-b- ]]; then
+            site_id="site-b"
+        else
+            echo "  WARNING: Cannot determine site-id for cluster $cluster, skipping"
+            continue
+        fi
+        
         kubectl label cluster.provisioning.cattle.io "$cluster" -n fleet-default \
-            "site-id=$cluster" \
+            "site-id=$site_id" \
             "test-group=2-sites-5-vms" \
             --overwrite 2>/dev/null || {
             echo "  WARNING: Failed to label provisioning cluster $cluster"
             continue
         }
-        echo "  OK: Provisioning cluster $cluster labeled with site-id=$cluster, test-group=2-sites-5-vms"
+        echo "  OK: Provisioning cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms"
     done
 fi
 
@@ -97,14 +116,24 @@ else
     
     echo "Labeling CAPI clusters..."
     for cluster in $CAPI_CLUSTERS; do
+        # Determine site-id from cluster name (site-a-vm-01 → site-a, site-b-vm-01 → site-b)
+        if [[ "$cluster" =~ ^site-a- ]]; then
+            site_id="site-a"
+        elif [[ "$cluster" =~ ^site-b- ]]; then
+            site_id="site-b"
+        else
+            echo "  WARNING: Cannot determine site-id for cluster $cluster, skipping"
+            continue
+        fi
+        
         kubectl label cluster.cluster.x-k8s.io "$cluster" -n fleet-default \
-            "site-id=$cluster" \
+            "site-id=$site_id" \
             "test-group=2-sites-5-vms" \
             --overwrite 2>/dev/null || {
             echo "  WARNING: Failed to label CAPI cluster $cluster"
             continue
         }
-        echo "  OK: CAPI cluster $cluster labeled with site-id=$cluster, test-group=2-sites-5-vms"
+        echo "  OK: CAPI cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms"
     done
 fi
 
