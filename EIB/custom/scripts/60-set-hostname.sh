@@ -1,13 +1,14 @@
 #!/bin/bash
 # Set hostname based on MAC address
 # This script runs during combustion phase to set unique hostname for each VM
-# MAC addresses are mapped to hostnames: node1 through node10
+# The hostname must be set BEFORE nm-configurator runs so it can select the correct network configuration
+# MAC addresses are mapped to hostnames: node1-sitea through node5-siteb
 
 set -e
 
 echo "=== Setting hostname based on MAC address ===" | tee -a /var/log/combustion-hostname.log
 
-# Wait for eth0 to be available
+# Wait for eth0 to be available (needed to get MAC address)
 for i in {1..30}; do
     if ip link show eth0 &>/dev/null; then
         echo "eth0 interface found" | tee -a /var/log/combustion-hostname.log
@@ -19,6 +20,10 @@ done
 
 # Get MAC address
 MAC=$(ip link show eth0 | grep -oP 'link/ether \K[^ ]+' | tr '[:lower:]' '[:upper:]' || echo "")
+if [ -z "$MAC" ]; then
+    echo "ERROR: Could not detect MAC address" | tee -a /var/log/combustion-hostname.log
+    exit 1
+fi
 echo "Detected MAC: $MAC" | tee -a /var/log/combustion-hostname.log
 
 # MAC to hostname mapping (case-insensitive matching)
@@ -58,32 +63,45 @@ declare -A MAC_TO_HOSTNAME=(
 )
 
 # Set hostname based on MAC
-if [ -n "$MAC" ] && [ -n "${MAC_TO_HOSTNAME[$MAC]}" ]; then
+if [ -n "${MAC_TO_HOSTNAME[$MAC]}" ]; then
     HOSTNAME="${MAC_TO_HOSTNAME[$MAC]}"
     echo "Setting hostname to: $HOSTNAME" | tee -a /var/log/combustion-hostname.log
     
-    # Set hostname
-    hostnamectl set-hostname "$HOSTNAME" || echo "$HOSTNAME" > /etc/hostname
+    # Set hostname using hostnamectl (preferred method)
+    if command -v hostnamectl &>/dev/null; then
+        hostnamectl set-hostname "$HOSTNAME" 2>&1 | tee -a /var/log/combustion-hostname.log || true
+    fi
     
-    # Update /etc/hostname
+    # Update /etc/hostname (required for persistence and nm-configurator)
     echo "$HOSTNAME" > /etc/hostname
+    echo "Updated /etc/hostname with: $HOSTNAME" | tee -a /var/log/combustion-hostname.log
     
     # Update /etc/hosts if it exists
     if [ -f /etc/hosts ]; then
         # Remove old hostname entries
-        sed -i '/^127.0.0.1/d' /etc/hosts
-        sed -i '/^::1/d' /etc/hosts
+        sed -i '/^127.0.0.1/d' /etc/hosts 2>/dev/null || true
+        sed -i '/^::1/d' /etc/hosts 2>/dev/null || true
         # Add new entry
         echo "127.0.0.1 localhost $HOSTNAME" >> /etc/hosts
         echo "::1 localhost $HOSTNAME" >> /etc/hosts
+        echo "Updated /etc/hosts" | tee -a /var/log/combustion-hostname.log
     fi
     
-    echo "✓ Hostname set to: $HOSTNAME" | tee -a /var/log/combustion-hostname.log
+    # Verify hostname is set
+    CURRENT_HOSTNAME=$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null || echo "")
+    if [ "$CURRENT_HOSTNAME" = "$HOSTNAME" ]; then
+        echo "✓ Hostname successfully set to: $HOSTNAME" | tee -a /var/log/combustion-hostname.log
+        echo "  nm-configurator will use this hostname to select network configuration from network/$HOSTNAME.yaml" | tee -a /var/log/combustion-hostname.log
+    else
+        echo "WARNING: Hostname verification failed. Expected: $HOSTNAME, Got: $CURRENT_HOSTNAME" | tee -a /var/log/combustion-hostname.log
+    fi
 else
-    echo "WARNING: MAC address $MAC not found in mapping, using default hostname" | tee -a /var/log/combustion-hostname.log
+    echo "ERROR: MAC address $MAC not found in mapping" | tee -a /var/log/combustion-hostname.log
+    echo "  Cannot set hostname. Network configuration may fail." | tee -a /var/log/combustion-hostname.log
     # Fallback: try to get hostname from network config or use default
-    CURRENT_HOSTNAME=$(hostname || echo "slemicro")
-    echo "Current hostname: $CURRENT_HOSTNAME" | tee -a /var/log/combustion-hostname.log
+    CURRENT_HOSTNAME=$(hostname 2>/dev/null || echo "slemicro")
+    echo "  Using fallback hostname: $CURRENT_HOSTNAME" | tee -a /var/log/combustion-hostname.log
+    exit 1
 fi
 
 echo "=== Hostname configuration complete ===" | tee -a /var/log/combustion-hostname.log

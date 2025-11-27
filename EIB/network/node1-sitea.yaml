@@ -1,0 +1,14 @@
+# NetworkState configuration for nm-configurator
+# This file is used by nm-configurator to configure the network based on hostname
+interfaces:
+  - name: eth0
+    type: ethernet
+    mac-address: "52:54:00:20:30:01"
+    state: up
+    ipv4:
+      enabled: true
+      dhcp: true
+    ipv6:
+      enabled: false
+hostname:
+  config: node1-sitea

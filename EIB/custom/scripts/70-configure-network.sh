@@ -3,20 +3,32 @@
 # This script runs during combustion phase ONLY if nm-configurator (nmc) failed to configure the network
 # nmc should have already configured the network from network/*.yaml files during EIB build
 # This is a safety fallback in case nmc didn't work correctly
+#
+# IMPORTANT: This script should only run if nm-configurator failed. nm-configurator runs automatically
+# during combustion and uses the hostname (set by 60-set-hostname.sh) to select the appropriate
+# network configuration from the network/ directory.
 
 set -e
 
 echo "=== Checking network configuration (fallback script) ===" | tee -a /var/log/combustion-network.log
 
+# Wait a bit for nm-configurator to finish (it runs before this script)
+echo "Waiting for nm-configurator to complete..." | tee -a /var/log/combustion-network.log
+sleep 5
+
 # Check if network is already configured by nmc
 # If eth0 has an IP or a connection exists, nmc likely worked
-if ip addr show eth0 2>/dev/null | grep -q "inet " || nmcli connection show eth0 2>/dev/null | grep -q "connection.id"; then
-    echo "Network already configured by nm-configurator (nmc). Skipping fallback script." | tee -a /var/log/combustion-network.log
+if ip addr show eth0 2>/dev/null | grep -q "inet " || (command -v nmcli &>/dev/null && nmcli connection show eth0 2>/dev/null | grep -q "connection.id"); then
+    echo "✓ Network already configured by nm-configurator (nmc). Skipping fallback script." | tee -a /var/log/combustion-network.log
     echo "Current network status:" | tee -a /var/log/combustion-network.log
     ip addr show eth0 2>/dev/null | tee -a /var/log/combustion-network.log || true
-    nmcli connection show eth0 2>/dev/null | tee -a /var/log/combustion-network.log || true
+    if command -v nmcli &>/dev/null; then
+        nmcli connection show eth0 2>/dev/null | tee -a /var/log/combustion-network.log || true
+    fi
     exit 0
 fi
+
+echo "WARNING: nm-configurator did not configure the network. Applying fallback DHCP configuration..." | tee -a /var/log/combustion-network.log
 
 echo "nmc configuration not detected. Applying fallback DHCP configuration..." | tee -a /var/log/combustion-network.log
 echo "=== Configuring network for DHCP (fallback) ===" | tee -a /var/log/combustion-network.log

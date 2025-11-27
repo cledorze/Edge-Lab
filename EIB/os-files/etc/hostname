@@ -1,1 +1,3 @@
-node1.cledorze.lan
+# Hostname will be set dynamically by 60-set-hostname.sh during combustion
+# This file is kept empty to allow dynamic hostname configuration
+# nm-configurator will use the hostname to select the appropriate network configuration
