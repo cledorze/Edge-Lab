@@ -1,0 +1,18 @@
+# Network configuration for node3-sitea
+connection:
+  id: eth0
+  type: ethernet
+  interface-name: eth0
+  autoconnect: true
+  autoconnect-priority: 100
+
+ethernet:
+  mac-address: "52:54:00:20:30:03"
+
+ipv4:
+  method: auto
+  dhcp-timeout: 60
+
+ipv6:
+  method: ignore
+
