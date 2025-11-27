@@ -1,119 +1,266 @@
 #!/bin/bash
-# Script to update Ingress hostname with Ingress Controller IP
-# This script is used by the update-ingress-hostname Job in Fleet workloads
-# It automatically detects Traefik LoadBalancer, nginx LoadBalancer, or falls back to node IP
+# Optimized script to update Ingress hostname with Ingress Controller IP
+# Automatically detects Traefik LoadBalancer, nginx LoadBalancer, or falls back to node IP
+# Uses sslip.io for dynamic DNS resolution
 
-set -e
+set -o errexit
+set -o nounset
+set -o pipefail
 
+# Configuration from environment variables
 INGRESS_NAME="${INGRESS_NAME:-demo-workload-site-a}"
 NAMESPACE="${NAMESPACE:-demo-workload-site-a}"
 HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-demo-workload-site-a}"
+MAX_WAIT="${MAX_WAIT:-60}"  # Reduced from 120s - faster failure for non-LoadBalancer cases
 
-echo "=== Updating Ingress hostname with Ingress Controller IP ==="
-echo "Ingress: $INGRESS_NAME"
-echo "Namespace: $NAMESPACE"
-echo "Hostname prefix: $HOSTNAME_PREFIX"
-echo ""
+# Colors for output (optional, but helpful)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-# Try to detect Ingress Controller type and get IP
-MAX_WAIT=120
-WAITED=0
-INGRESS_IP=""
+log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
-echo "Detecting Ingress Controller..."
+# Function to validate IP address format
+is_valid_ip() {
+  local ip="$1"
+  [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || return 1
+  # Check each octet is 0-255
+  IFS='.' read -ra ADDR <<< "$ip"
+  for i in "${ADDR[@]}"; do
+    [[ $i -ge 0 && $i -le 255 ]] || return 1
+  done
+  return 0
+}
 
-# First, try Traefik LoadBalancer (for Traefik with MetalLB)
-if kubectl get svc traefik -n kube-system &>/dev/null; then
-  echo "Found Traefik service, checking for LoadBalancer IP..."
-  while [ $WAITED -lt $MAX_WAIT ]; do
-    INGRESS_IP=$(kubectl get svc traefik -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-    
-    if [ -n "$INGRESS_IP" ] && [ "$INGRESS_IP" != "null" ] && [ "$INGRESS_IP" != "" ]; then
-      echo "OK: Traefik LoadBalancer IP found: $INGRESS_IP"
-      break
+# Function to get LoadBalancer IP from a service
+get_loadbalancer_ip() {
+  local svc_name="$1"
+  local namespace="${2:-kube-system}"
+  local ip
+  
+  ip=$(kubectl get svc "$svc_name" -n "$namespace" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+  
+  # Also check for hostname (some LoadBalancers use hostname instead of IP)
+  if [[ -z "$ip" ]] || [[ "$ip" == "null" ]]; then
+    local hostname
+    hostname=$(kubectl get svc "$svc_name" -n "$namespace" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    if [[ -n "$hostname" ]] && [[ "$hostname" != "null" ]]; then
+      # Try to resolve hostname to IP
+      ip=$(getent hosts "$hostname" 2>/dev/null | awk '{print $1}' | head -1 || echo "")
+    fi
+  fi
+  
+  if [[ -n "$ip" ]] && [[ "$ip" != "null" ]] && is_valid_ip "$ip"; then
+    echo "$ip"
+    return 0
+  fi
+  return 1
+}
+
+# Function to wait for LoadBalancer IP with timeout
+wait_for_loadbalancer_ip() {
+  local svc_name="$1"
+  local namespace="${2:-kube-system}"
+  local max_wait="${3:-$MAX_WAIT}"
+  local waited=0
+  local ip=""
+  
+  log_info "Waiting for $svc_name LoadBalancer IP (max ${max_wait}s)..."
+  
+  while [[ $waited -lt $max_wait ]]; do
+    if ip=$(get_loadbalancer_ip "$svc_name" "$namespace"); then
+      log_info "$svc_name LoadBalancer IP found: $ip"
+      echo "$ip"
+      return 0
     fi
     
     sleep 2
-    WAITED=$((WAITED + 2))
-    echo "Waiting for Traefik LoadBalancer IP... (${WAITED}s/${MAX_WAIT}s)"
-  done
-fi
-
-# If no Traefik LoadBalancer, try nginx ingress controller LoadBalancer
-if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ] || [ "$INGRESS_IP" = "" ]; then
-  echo "Traefik LoadBalancer not found, checking nginx ingress controller..."
-  # Try common nginx ingress controller service names
-  for svc_name in "rke2-ingress-nginx-controller" "ingress-nginx-controller" "nginx-ingress-controller"; do
-    if kubectl get svc "$svc_name" -n kube-system &>/dev/null; then
-      echo "Found $svc_name service, checking for LoadBalancer IP..."
-      INGRESS_IP=$(kubectl get svc "$svc_name" -n kube-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-      if [ -n "$INGRESS_IP" ] && [ "$INGRESS_IP" != "null" ] && [ "$INGRESS_IP" != "" ]; then
-        echo "OK: nginx LoadBalancer IP found: $INGRESS_IP"
-        break
-      fi
+    waited=$((waited + 2))
+    if [[ $((waited % 10)) -eq 0 ]]; then
+      log_info "Still waiting... (${waited}s/${max_wait}s)"
     fi
   done
-fi
+  
+  log_warn "$svc_name LoadBalancer IP not available after ${max_wait}s"
+  return 1
+}
 
-# If still no LoadBalancer IP, use node IP (for single-node clusters or NodePort)
-if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ] || [ "$INGRESS_IP" = "" ]; then
-  echo "No LoadBalancer IP found, using node IP (single-node cluster)..."
-  NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-  if [ -n "$NODE_NAME" ]; then
-    INGRESS_IP=$(kubectl get node "$NODE_NAME" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
-    if [ -n "$INGRESS_IP" ]; then
-      echo "OK: Using node IP: $INGRESS_IP"
+# Function to get node IP (InternalIP)
+get_node_ip() {
+  local node_name="${1:-}"
+  
+  if [[ -z "$node_name" ]]; then
+    # Get first node name
+    node_name=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+  fi
+  
+  if [[ -z "$node_name" ]]; then
+    return 1
+  fi
+  
+  local ip
+  ip=$(kubectl get node "$node_name" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo "")
+  
+  if [[ -n "$ip" ]] && is_valid_ip "$ip"; then
+    echo "$ip"
+    return 0
+  fi
+  
+  return 1
+}
+
+# Main function to detect Ingress Controller IP
+detect_ingress_ip() {
+  local ip=""
+  
+  log_info "Detecting Ingress Controller IP..."
+  
+  # Strategy 1: Try Traefik LoadBalancer (with MetalLB)
+  if kubectl get svc traefik -n kube-system &>/dev/null; then
+    if ip=$(wait_for_loadbalancer_ip "traefik" "kube-system" "$MAX_WAIT"); then
+      echo "$ip"
+      return 0
     fi
   fi
-fi
+  
+  # Strategy 2: Try nginx ingress controller LoadBalancer
+  local nginx_services=("rke2-ingress-nginx-controller" "ingress-nginx-controller" "nginx-ingress-controller")
+  for svc_name in "${nginx_services[@]}"; do
+    if kubectl get svc "$svc_name" -n kube-system &>/dev/null 2>&1; then
+      log_info "Found $svc_name service, checking for LoadBalancer IP..."
+      if ip=$(get_loadbalancer_ip "$svc_name" "kube-system"); then
+        log_info "$svc_name LoadBalancer IP found: $ip"
+        echo "$ip"
+        return 0
+      fi
+      # Quick check only, don't wait for nginx (usually NodePort in RKE2)
+      log_info "$svc_name exists but no LoadBalancer IP (likely NodePort)"
+    fi
+  done
+  
+  # Strategy 3: Fallback to node IP (for single-node clusters or NodePort)
+  log_info "No LoadBalancer found, using node IP (single-node/NodePort mode)..."
+  if ip=$(get_node_ip); then
+    log_info "Using node IP: $ip"
+    echo "$ip"
+    return 0
+  fi
+  
+  log_error "Could not determine Ingress Controller IP"
+  return 1
+}
 
-if [ -z "$INGRESS_IP" ] || [ "$INGRESS_IP" = "null" ] || [ "$INGRESS_IP" = "" ]; then
-  echo "ERROR: Could not determine Ingress Controller IP"
-  echo "The Ingress will need to be updated manually"
-  exit 1
-fi
+# Function to update Ingress hostname
+update_ingress_hostname() {
+  local ingress_name="$1"
+  local namespace="$2"
+  local new_host="$3"
+  
+  # Check if Ingress exists
+  if ! kubectl get ingress "$ingress_name" -n "$namespace" &>/dev/null; then
+    log_error "Ingress $ingress_name not found in namespace $namespace"
+    return 1
+  fi
+  
+  # Get current hostname
+  local current_host
+  current_host=$(kubectl get ingress "$ingress_name" -n "$namespace" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+  
+  # Check if update is needed
+  if [[ "$current_host" == "$new_host" ]]; then
+    log_info "Ingress hostname already correct: $new_host"
+    return 0
+  fi
+  
+  # Check if Ingress has rules
+  local has_rules
+  has_rules=$(kubectl get ingress "$ingress_name" -n "$namespace" -o jsonpath='{.spec.rules}' 2>/dev/null || echo "[]")
+  
+  if [[ "$has_rules" == "[]" ]] || [[ -z "$current_host" ]]; then
+    # No rules or empty hostname - add new rule
+    log_info "Adding Ingress rule with hostname: $new_host"
+    kubectl patch ingress "$ingress_name" -n "$namespace" --type='json' -p="[
+      {\"op\": \"add\", \"path\": \"/spec/rules\", \"value\": [
+        {
+          \"host\": \"$new_host\",
+          \"http\": {
+            \"paths\": [
+              {
+                \"path\": \"/\",
+                \"pathType\": \"Prefix\",
+                \"backend\": {
+                  \"service\": {
+                    \"name\": \"$ingress_name\",
+                    \"port\": {\"number\": 80}
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]}
+    ]" || {
+      log_error "Failed to add Ingress rule"
+      return 1
+    }
+  else
+    # Update existing rule hostname
+    log_info "Updating Ingress hostname from '$current_host' to '$new_host'"
+    kubectl patch ingress "$ingress_name" -n "$namespace" --type='json' -p="[
+      {\"op\": \"replace\", \"path\": \"/spec/rules/0/host\", \"value\": \"$new_host\"}
+    ]" || {
+      log_error "Failed to update Ingress hostname"
+      return 1
+    }
+  fi
+  
+  # Verify update
+  local verified_host
+  verified_host=$(kubectl get ingress "$ingress_name" -n "$namespace" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+  
+  if [[ "$verified_host" == "$new_host" ]]; then
+    log_info "✓ Verification successful: Ingress hostname is $verified_host"
+    log_info "✓ Access URL: http://$new_host"
+    return 0
+  else
+    log_warn "Verification failed. Expected '$new_host', got '$verified_host'"
+    return 1
+  fi
+}
 
-# Get current Ingress
-CURRENT_HOST=$(kubectl get ingress "$INGRESS_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
-NEW_HOST="${HOSTNAME_PREFIX}.${INGRESS_IP}.sslip.io"
-
-if [ "$CURRENT_HOST" = "$NEW_HOST" ]; then
-  echo "OK: Ingress hostname is already correct: $NEW_HOST"
-  exit 0
-fi
-
-# Check if Ingress has any rules
-RULE_COUNT=$(kubectl get ingress "$INGRESS_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.rules[*].host}' 2>/dev/null | wc -w || echo "0")
-
-if [ "$RULE_COUNT" = "0" ] || [ -z "$CURRENT_HOST" ]; then
-  # Ingress has no rules, add the first rule using kubectl patch with JSON
-  echo "Adding Ingress rule with hostname: $NEW_HOST"
-  PATCH_JSON="{\"spec\":{\"rules\":[{\"host\":\"$NEW_HOST\",\"http\":{\"paths\":[{\"path\":\"/\",\"pathType\":\"Prefix\",\"backend\":{\"service\":{\"name\":\"$INGRESS_NAME\",\"port\":{\"number\":80}}}}]}}]}}"
-  kubectl patch ingress "$INGRESS_NAME" -n "$NAMESPACE" --type merge -p "$PATCH_JSON" && {
-    echo "OK: Ingress rule added successfully"
-    echo "OK: Access URL: http://$NEW_HOST"
-  } || {
-    echo "ERROR: Failed to add Ingress rule"
+# Main execution
+main() {
+  log_info "=== Updating Ingress hostname with Ingress Controller IP ==="
+  log_info "Ingress: $INGRESS_NAME"
+  log_info "Namespace: $NAMESPACE"
+  log_info "Hostname prefix: $HOSTNAME_PREFIX"
+  echo ""
+  
+  # Detect Ingress Controller IP
+  local ingress_ip
+  if ! ingress_ip=$(detect_ingress_ip); then
+    log_error "Failed to detect Ingress Controller IP"
+    log_error "The Ingress will need to be updated manually"
     exit 1
-  }
-else
-  # Ingress has rules, update the first rule's hostname
-  echo "Updating Ingress hostname from $CURRENT_HOST to $NEW_HOST"
-  PATCH_JSON="[{\"op\": \"replace\", \"path\": \"/spec/rules/0/host\", \"value\": \"$NEW_HOST\"}]"
-  kubectl patch ingress "$INGRESS_NAME" -n "$NAMESPACE" --type='json' -p "$PATCH_JSON" && {
-    echo "OK: Ingress updated successfully"
-    echo "OK: Access URL: http://$NEW_HOST"
-  } || {
-    echo "ERROR: Failed to update Ingress"
+  fi
+  
+  # Build new hostname with sslip.io
+  local new_host="${HOSTNAME_PREFIX}.${ingress_ip}.sslip.io"
+  log_info "Target hostname: $new_host"
+  echo ""
+  
+  # Update Ingress
+  if update_ingress_hostname "$INGRESS_NAME" "$NAMESPACE" "$new_host"; then
+    log_info "✓ Ingress hostname update completed successfully"
+    exit 0
+  else
+    log_error "Failed to update Ingress hostname"
     exit 1
-  }
-fi
+  fi
+}
 
-# Verify update
-VERIFIED_HOST=$(kubectl get ingress "$INGRESS_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
-if [ "$VERIFIED_HOST" = "$NEW_HOST" ]; then
-  echo "OK: Verification successful: Ingress hostname is $VERIFIED_HOST"
-else
-  echo "⚠ Warning: Verification failed. Expected $NEW_HOST, got $VERIFIED_HOST"
-fi
-
+# Run main function
+main "$@"
