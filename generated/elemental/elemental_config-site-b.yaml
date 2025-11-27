@@ -16,7 +16,7 @@ elemental:
         snapshotter:
             type: btrfs
     registration:
-        url: https://rancher.cledorze.lan/elemental/registration/rt2jwqjsbsgwwb5clkkt8w79jh46llmwcvs95kdq22xsbh8649rvrd
+        url: https://rancher.cledorze.lan/elemental/registration/n89w847jr2dpmf2b9c529lcsz8w9mf4m8f5pvdmc5wkrw7l79w5ng7
         ca-cert: |-
             -----BEGIN CERTIFICATE-----
             MIIBvTCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj
