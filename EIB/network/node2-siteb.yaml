@@ -1,18 +1,14 @@
-# Network configuration for node2-siteb
-connection:
-  id: eth0
-  type: ethernet
-  interface-name: eth0
-  autoconnect: true
-  autoconnect-priority: 100
-
-ethernet:
-  mac-address: "52:54:00:20:40:02"
-
-ipv4:
-  method: auto
-  dhcp-timeout: 60
-
-ipv6:
-  method: ignore
-
+# NetworkState configuration for nm-configurator
+# This file is used by nm-configurator to configure the network based on hostname
+interfaces:
+  - name: eth0
+    type: ethernet
+    mac-address: "52:54:00:20:40:02"
+    state: up
+    ipv4:
+      enabled: true
+      dhcp: true
+    ipv6:
+      enabled: false
+hostname:
+  config: node2-siteb
