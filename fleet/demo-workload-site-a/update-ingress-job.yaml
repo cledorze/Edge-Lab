@@ -103,41 +103,35 @@ spec:
           RULE_COUNT=$(kubectl get ingress $INGRESS_NAME -n $NAMESPACE -o jsonpath='{.spec.rules[*].host}' 2>/dev/null | wc -w || echo "0")
           
           if [ "$RULE_COUNT" = "0" ] || [ -z "$CURRENT_HOST" ]; then
-            # Ingress has no rules, add the first rule
+            # Ingress has no rules, add the first rule using kubectl apply with a temporary file
             echo "Adding Ingress rule with hostname: $NEW_HOST"
-            kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type='json' -p="[
-              {\"op\": \"add\", \"path\": \"/spec/rules\", \"value\": [
-                {
-                  \"host\": \"$NEW_HOST\",
-                  \"http\": {
-                    \"paths\": [
-                      {
-                        \"path\": \"/\",
-                        \"pathType\": \"Prefix\",
-                        \"backend\": {
-                          \"service\": {
-                            \"name\": \"demo-workload-site-a\",
-                            \"port\": {\"number\": 80}
-                          }
-                        }
-                      }
-                    ]
-                  }
-                }
-              ]}
-            ]" && {
+            cat > /tmp/ingress-patch.yaml <<EOF
+spec:
+  rules:
+  - host: $NEW_HOST
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo-workload-site-a
+            port:
+              number: 80
+EOF
+            kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type merge -p "$(cat /tmp/ingress-patch.yaml)" && {
               echo "OK: Ingress rule added successfully"
               echo "OK: Access URL: http://$NEW_HOST"
             } || {
               echo "ERROR: Failed to add Ingress rule"
               exit 1
             }
+            rm -f /tmp/ingress-patch.yaml
           else
             # Ingress has rules, update the first rule's hostname
             echo "Updating Ingress hostname from $CURRENT_HOST to $NEW_HOST"
-            kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type='json' -p="[
-              {\"op\": \"replace\", \"path\": \"/spec/rules/0/host\", \"value\": \"$NEW_HOST\"}
-            ]" && {
+            PATCH_JSON="[{\"op\": \"replace\", \"path\": \"/spec/rules/0/host\", \"value\": \"$NEW_HOST\"}]"
+            kubectl patch ingress $INGRESS_NAME -n $NAMESPACE --type='json' -p "$PATCH_JSON" && {
               echo "OK: Ingress updated successfully"
               echo "OK: Access URL: http://$NEW_HOST"
             } || {
