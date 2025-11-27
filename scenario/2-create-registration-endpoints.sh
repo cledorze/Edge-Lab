@@ -3,12 +3,13 @@
 # This script follows Step 2 of DEPLOYMENT-GUIDE.md
 #
 # What it does:
-# 1. Applies MachineRegistrations for site-a and site-b
-# 2. Waits for registration URLs to be generated
-# 3. Downloads elemental_config.yaml from each endpoint
-# 4. Saves them as generated/elemental/elemental_config-site-a.yaml and generated/elemental/elemental_config-site-b.yaml
+# 1. Pulls latest Elemental config files from git (if available)
+# 2. Applies MachineRegistrations for site-a and site-b
+# 3. Waits for registration URLs to be generated (with longer timeout)
+# 4. Downloads elemental_config.yaml from each endpoint
+# 5. Saves them as generated/elemental/elemental_config-site-a.yaml and generated/elemental/elemental_config-site-b.yaml
 #
-# Usage: ./create-registration-endpoints.sh
+# Usage: ./2-create-registration-endpoints.sh
 
 set -e
 
@@ -30,6 +31,36 @@ echo "=========================================="
 echo "Create Registration Endpoints"
 echo "Step 2 of DEPLOYMENT-GUIDE.md"
 echo "=========================================="
+echo ""
+
+# Step 0: Pull latest Elemental config files from git (if available)
+echo "=== Step 0: Pulling latest Elemental config files from Git ==="
+echo ""
+
+if command -v git &> /dev/null && [ -d "$PROJECT_ROOT/.git" ]; then
+    cd "$PROJECT_ROOT"
+    
+    # Check if we're in a git repository and have a remote
+    if git remote -v | grep -q .; then
+        echo "Pulling latest changes from git repository..."
+        if git pull origin main 2>/dev/null || git pull 2>/dev/null; then
+            echo "OK: Pulled latest changes from git"
+            
+            # Check if Elemental config files were updated
+            if [ -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml" ] || [ -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml" ]; then
+                echo "OK: Elemental config files available from git"
+            fi
+        else
+            echo "WARNING:  Could not pull from git (may not be connected or no changes)"
+            echo "   Continuing with local files..."
+        fi
+    else
+        echo "WARNING:  No git remote configured, skipping pull"
+    fi
+else
+    echo "WARNING:  Git not available or not in a git repository, skipping pull"
+fi
+
 echo ""
 
 # Check that kubectl is available
@@ -72,29 +103,51 @@ echo ""
 echo "=== Step 2: Waiting for registration URLs ==="
 echo ""
 
-# Wait for registration URLs to be generated (max 30 seconds)
-MAX_WAIT=30
+# Wait for registration URLs to be generated (increased timeout to 90 seconds)
+MAX_WAIT=90
 WAIT_COUNT=0
 SITE_A_URL=""
 SITE_B_URL=""
+
+echo "Waiting for Rancher to generate registration URLs..."
+echo "This may take up to $MAX_WAIT seconds..."
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     SITE_A_URL=$(kubectl get machineregistration site-a-registration -n fleet-default -o jsonpath='{.status.registrationURL}' 2>/dev/null || echo "")
     SITE_B_URL=$(kubectl get machineregistration site-b-registration -n fleet-default -o jsonpath='{.status.registrationURL}' 2>/dev/null || echo "")
     
     if [ -n "$SITE_A_URL" ] && [ -n "$SITE_B_URL" ]; then
+        echo ""
+        echo "OK: Registration URLs generated after $WAIT_COUNT seconds"
         break
     fi
     
-    echo "  Waiting for registration URLs... ($WAIT_COUNT/$MAX_WAIT seconds)"
+    # Show progress every 10 seconds
+    if [ $((WAIT_COUNT % 10)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
+        echo "  Still waiting... ($WAIT_COUNT/$MAX_WAIT seconds)"
+        if [ -z "$SITE_A_URL" ]; then
+            echo "    Site A URL: not ready yet"
+        else
+            echo "    Site A URL: ready"
+        fi
+        if [ -z "$SITE_B_URL" ]; then
+            echo "    Site B URL: not ready yet"
+        else
+            echo "    Site B URL: ready"
+        fi
+    fi
+    
     sleep 2
     WAIT_COUNT=$((WAIT_COUNT + 2))
 done
 
 if [ -z "$SITE_A_URL" ] || [ -z "$SITE_B_URL" ]; then
+    echo ""
     echo "WARNING:  Registration URLs not available after $MAX_WAIT seconds"
     echo "   Please check the MachineRegistrations manually:"
     echo "   kubectl get machineregistration -n fleet-default"
+    echo "   kubectl describe machineregistration site-a-registration -n fleet-default"
+    echo "   kubectl describe machineregistration site-b-registration -n fleet-default"
     exit 1
 fi
 
