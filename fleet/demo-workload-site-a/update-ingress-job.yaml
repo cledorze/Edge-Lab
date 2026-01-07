@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: update-ingress-hostname-v3
+  name: update-ingress-hostname-v4
   namespace: demo-workload-site-a
   annotations:
     fleet.cattle.io/redeploy: "true"
