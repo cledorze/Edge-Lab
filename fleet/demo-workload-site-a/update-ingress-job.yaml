@@ -1,23 +1,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  annotations:
-    fleet.cattle.io/redeploy: "true"
   name: update-ingress-hostname
   namespace: demo-workload-site-a
   annotations:
+    fleet.cattle.io/redeploy: "true"
     # This job runs once to update the Ingress with the correct Ingress Controller IP
-    # Automatically detects Traefik LoadBalancer, nginx LoadBalancer, or falls back to node IP
     # Based on SUSE Edge 3.4 documentation recommendation (Section 24.6.1: "Ingress with MetalLB")
-    # Reference: https://documentation.suse.com/suse-edge/3.4/html/edge/kubernetes-metallb.html#_ingress_with_metallb
 spec:
-  # ttlSecondsAfterFinished removed: Fleet requires Jobs to persist to show as "Ready"
-  # The Job will remain after completion so Fleet can track it properly
-  backoffLimit: 3  # Allow 3 retries for transient failures (network, DNS, etc.)
+  backoffLimit: 3
   template:
     metadata:
-  annotations:
-    fleet.cattle.io/redeploy: "true"
       labels:
         app: update-ingress-hostname
     spec:
