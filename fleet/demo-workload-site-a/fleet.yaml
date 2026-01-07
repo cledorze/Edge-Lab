@@ -1,0 +1,8 @@
+diff:
+  comparePatches:
+  - apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    name: demo-workload-site-a
+    namespace: demo-workload-site-a
+    operations:
+    - {"op": "remove", "path": "/spec/rules/0/host"}
