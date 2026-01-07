@@ -1,6 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  annotations:
+    fleet.cattle.io/redeploy: "true"
   name: update-ingress-hostname
   namespace: demo-workload-site-a
   annotations:
@@ -14,6 +16,8 @@ spec:
   backoffLimit: 3  # Allow 3 retries for transient failures (network, DNS, etc.)
   template:
     metadata:
+  annotations:
+    fleet.cattle.io/redeploy: "true"
       labels:
         app: update-ingress-hostname
     spec:
