@@ -16,19 +16,19 @@ elemental:
         snapshotter:
             type: btrfs
     registration:
-        url: https://rancher.cledorze.lan/elemental/registration/m44hdtldljkhrlgx9cp4cxjhhz78bcwqvdvdvtfxwq7pdqbzbtm7rw
+        url: https://rancher.cledorze.lan/elemental/registration/htcpg77zmlt8pfpptxjmdx7w97sctcp57vbknkb5wt4wfsgwwrbcqz
         ca-cert: |-
             -----BEGIN CERTIFICATE-----
             MIIBvTCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj
-            bGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTc0MDU2
-            ODUxNDAeFw0yNTAyMjYxMTE1MTRaFw0zNTAyMjQxMTE1MTRaMEYxHDAaBgNVBAoT
+            bGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTc2NzQ2
+            MTkzMTAeFw0yNjAxMDMxNzM4NTFaFw0zNjAxMDExNzM4NTFaMEYxHDAaBgNVBAoT
             E2R5bmFtaWNsaXN0ZW5lci1vcmcxJjAkBgNVBAMMHWR5bmFtaWNsaXN0ZW5lci1j
-            YUAxNzQwNTY4NTE0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4Ux7lxLasfa
-            PKXPIZMPm49BPbXaoaW5BE5WuwY3fNWdbVMdijHyS1y4zFP3FpUQ2Qntj0Ca3jwe
-            9J4E3XSzP6NCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD
-            VR0OBBYEFINkdXkGybn9VZoFdMX//obff/G6MAoGCCqGSM49BAMCA0gAMEUCID+v
-            eLPjXFv1j8DouSnUGHeywkmmCxp6a3Dt3SaYpyLLAiEAhgUFvQlGlUtwFRWGL/Ih
-            UYxXqnzEr2wk3bjoxT0YMUM=
+            YUAxNzY3NDYxOTMxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsWnho+0TsOeu
+            Pe7BreEfWrjErEaiJiD5nKfapdqiThmAabpgsgmpLANGmFcOL2YLDB9JKrdeah4m
+            VqOUqMmscqNCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD
+            VR0OBBYEFLc1aCJ3ExENEGqR9BkVm35GCN21MAoGCCqGSM49BAMCA0gAMEUCICCL
+            VEpeo/PjkCNs8IWc3BIkNBEgrEWXbIUQSsEu35x5AiEAwxszXOzt5bz3G+YiSetW
+            JJJV5A5Vcjo8anq92XKxKjo=
             -----END CERTIFICATE-----
     reset:
         reboot: true
