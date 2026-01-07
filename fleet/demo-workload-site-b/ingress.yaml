@@ -12,7 +12,7 @@ metadata:
     # For single-node clusters, this is typically the node IP
     # For multi-node clusters, this is the VIP or LoadBalancer IP assigned by MetalLB
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
   # Placeholder hostname - will be updated by update-ingress-job.yaml with actual Ingress Controller IP
   # Format: demo-workload-site-b.<INGRESS_CONTROLLER_IP>.sslip.io
