@@ -1,16 +1,36 @@
 elemental:
+    install:
+        device: ""  # Auto-detected: first disk matching selector
+        device-selector:
+            - key: Name
+              operator: In
+              values:
+                  - /dev/sda
+                  - /dev/vda
+                  - /dev/nvme0
+            - key: Size
+              operator: Gt
+              values:
+                  - 20Gi
+        reboot: true
+        snapshotter:
+            type: btrfs
     registration:
-        url: https://rancher.cledorze.lan/elemental/registration/clbhf4jf2d646vkpqs86qhf2p9js5xs8cz5lzcv4bmvk6xj2vn97zb
+        url: https://rancher.cledorze.lan/elemental/registration/xbxzzpnp8pm9r2gtcntwzv8n2h8vvkh8lr4ddwzwns9h9hp5c8vd8n
         ca-cert: |-
             -----BEGIN CERTIFICATE-----
             MIIBvTCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj
-            bGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTc0MDU2
-            ODUxNDAeFw0yNTAyMjYxMTE1MTRaFw0zNTAyMjQxMTE1MTRaMEYxHDAaBgNVBAoT
+            bGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTc2NzQ2
+            MTkzMTAeFw0yNjAxMDMxNzM4NTFaFw0zNjAxMDExNzM4NTFaMEYxHDAaBgNVBAoT
             E2R5bmFtaWNsaXN0ZW5lci1vcmcxJjAkBgNVBAMMHWR5bmFtaWNsaXN0ZW5lci1j
-            YUAxNzQwNTY4NTE0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4Ux7lxLasfa
-            PKXPIZMPm49BPbXaoaW5BE5WuwY3fNWdbVMdijHyS1y4zFP3FpUQ2Qntj0Ca3jwe
-            9J4E3XSzP6NCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD
-            VR0OBBYEFINkdXkGybn9VZoFdMX//obff/G6MAoGCCqGSM49BAMCA0gAMEUCID+v
-            eLPjXFv1j8DouSnUGHeywkmmCxp6a3Dt3SaYpyLLAiEAhgUFvQlGlUtwFRWGL/Ih
-            UYxXqnzEr2wk3bjoxT0YMUM=
+            YUAxNzY3NDYxOTMxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsWnho+0TsOeu
+            Pe7BreEfWrjErEaiJiD5nKfapdqiThmAabpgsgmpLANGmFcOL2YLDB9JKrdeah4m
+            VqOUqMmscqNCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD
+            VR0OBBYEFLc1aCJ3ExENEGqR9BkVm35GCN21MAoGCCqGSM49BAMCA0gAMEUCICCL
+            VEpeo/PjkCNs8IWc3BIkNBEgrEWXbIUQSsEu35x5AiEAwxszXOzt5bz3G+YiSetW
+            JJJV5A5Vcjo8anq92XKxKjo=
             -----END CERTIFICATE-----
+    reset:
+        reboot: true
+        reset-oem: true
+        reset-persistent: true

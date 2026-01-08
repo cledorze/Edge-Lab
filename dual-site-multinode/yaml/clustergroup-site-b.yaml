@@ -1,0 +1,10 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: ClusterGroup
+metadata:
+  name: demo-workload-site-b
+  namespace: fleet-default
+spec:
+  selector:
+    matchLabels:
+      site-id: site-b
+      test-group: dual-site-multinode

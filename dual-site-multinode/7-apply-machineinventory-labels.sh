@@ -102,7 +102,7 @@ for mi in $MACHINE_INVENTORIES; do
     kubectl label "$mi" -n fleet-default \
         "hostname=$hostname" \
         "site-id=$site_id" \
-        "test-group=2-sites-5-vms" \
+        "test-group=dual-site-multinode" \
         --overwrite 2>/dev/null || {
         echo "    ERROR: Failed to apply labels"
         continue

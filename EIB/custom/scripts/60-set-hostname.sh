@@ -29,18 +29,30 @@ echo "Detected MAC: $MAC" | tee -a /var/log/combustion-hostname.log
 # MAC to hostname mapping (case-insensitive matching)
 # Format: node<number>-site<letter> (e.g., node1-sitea, node2-siteb)
 declare -A MAC_TO_HOSTNAME=(
-    # Site A VMs (site-a-vm-01 to site-a-vm-05)
+    # Site A VMs (site-a-vm-01 to site-a-vm-05) - Scenario 1
     ["52:54:00:20:30:01"]="node1-sitea"
     ["52:54:00:20:30:02"]="node2-sitea"
     ["52:54:00:20:30:03"]="node3-sitea"
     ["52:54:00:20:30:04"]="node4-sitea"
     ["52:54:00:20:30:05"]="node5-sitea"
-    # Site B VMs (site-b-vm-01 to site-b-vm-05)
+    # Site A VMs (site-a-vm-01 to site-a-vm-05) - Scenario Dual-Site-Multinode
+    ["52:54:00:30:30:01"]="node1-sitea"
+    ["52:54:00:30:30:02"]="node2-sitea"
+    ["52:54:00:30:30:03"]="node3-sitea"
+    ["52:54:00:30:30:04"]="node4-sitea"
+    ["52:54:00:30:30:05"]="node5-sitea"
+    # Site B VMs (site-b-vm-01 to site-b-vm-05) - Scenario 1
     ["52:54:00:20:40:01"]="node1-siteb"
     ["52:54:00:20:40:02"]="node2-siteb"
     ["52:54:00:20:40:03"]="node3-siteb"
     ["52:54:00:20:40:04"]="node4-siteb"
     ["52:54:00:20:40:05"]="node5-siteb"
+    # Site B VMs (site-b-vm-01 to site-b-vm-05) - Scenario Dual-Site-Multinode
+    ["52:54:00:30:40:01"]="node1-siteb"
+    ["52:54:00:30:40:02"]="node2-siteb"
+    ["52:54:00:30:40:03"]="node3-siteb"
+    ["52:54:00:30:40:04"]="node4-siteb"
+    ["52:54:00:30:40:05"]="node5-siteb"
     # Legacy test-vm VMs (for backward compatibility)
     ["52:54:00:02:03:05"]="node1"
     ["52:54:00:04:06:0a"]="node2"
@@ -96,12 +108,18 @@ if [ -n "${MAC_TO_HOSTNAME[$MAC]}" ]; then
         echo "WARNING: Hostname verification failed. Expected: $HOSTNAME, Got: $CURRENT_HOSTNAME" | tee -a /var/log/combustion-hostname.log
     fi
 else
-    echo "ERROR: MAC address $MAC not found in mapping" | tee -a /var/log/combustion-hostname.log
-    echo "  Cannot set hostname. Network configuration may fail." | tee -a /var/log/combustion-hostname.log
-    # Fallback: try to get hostname from network config or use default
-    CURRENT_HOSTNAME=$(hostname 2>/dev/null || echo "slemicro")
-    echo "  Using fallback hostname: $CURRENT_HOSTNAME" | tee -a /var/log/combustion-hostname.log
-    exit 1
+    echo "WARN: MAC address $MAC not found in mapping" | tee -a /var/log/combustion-hostname.log
+    echo "  Generating default hostname based on MAC..." | tee -a /var/log/combustion-hostname.log
+    # Generate a safe hostname from MAC (remove colons, lowercase)
+    SAFE_MAC=$(echo "$MAC" | tr -d ':' | tr '[:upper:]' '[:lower:]')
+    HOSTNAME="node-${SAFE_MAC}"
+    echo "Setting default hostname to: $HOSTNAME" | tee -a /var/log/combustion-hostname.log
+    
+    echo "$HOSTNAME" > /etc/hostname
+    if [ -f /etc/hosts ]; then
+        echo "127.0.0.1 localhost $HOSTNAME" >> /etc/hosts
+        echo "::1 localhost $HOSTNAME" >> /etc/hosts
+    fi
 fi
 
 echo "=== Hostname configuration complete ===" | tee -a /var/log/combustion-hostname.log

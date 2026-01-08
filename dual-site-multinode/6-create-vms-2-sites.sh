@@ -58,9 +58,9 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ISO_SITE_A="${SCRIPT_DIR}/../output/vm-rancher-fleet-scale-site-a.iso"
 ISO_SITE_B="${SCRIPT_DIR}/../output/vm-rancher-fleet-scale-site-b.iso"
-DISK_SIZE="20G"
+DISK_SIZE="25G"
 MEMORY="8192"  # 8GB in MB
-VCPUS="1"
+VCPUS="2"
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -255,8 +255,8 @@ main() {
     echo "  Start Site B:    for i in {01..05}; do virsh --connect qemu:///system start site-b-vm-\$i; done"
     echo ""
     echo "Monitor Registration:"
-    echo "  watch kubectl get machineinventory -n fleet-default -l test-group=2-sites-5-vms"
-    echo "  watch kubectl get cluster -n fleet-default -l test-group=2-sites-5-vms"
+    echo "  watch kubectl get machineinventory -n fleet-default -l test-group=dual-site-multinode"
+    echo "  watch kubectl get cluster -n fleet-default -l test-group=dual-site-multinode"
 }
 
 main

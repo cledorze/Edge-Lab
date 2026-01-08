@@ -200,12 +200,12 @@ else
     else
         echo ""
         echo "Cleaning up MachineInventories..."
-        MI_COUNT=$(kubectl get machineinventory -n fleet-default -l test-group=2-sites-5-vms --no-headers 2>/dev/null | wc -l || echo "0")
+        MI_COUNT=$(kubectl get machineinventory -n fleet-default -l test-group=dual-site-multinode --no-headers 2>/dev/null | wc -l || echo "0")
         if [ "$MI_COUNT" -gt 0 ]; then
             echo "  Found $MI_COUNT MachineInventories, deleting..."
-            kubectl delete machineinventory -n fleet-default -l test-group=2-sites-5-vms --wait=false 2>/dev/null || true
+            kubectl delete machineinventory -n fleet-default -l test-group=dual-site-multinode --wait=false 2>/dev/null || true
             # Force delete with finalizers if needed
-            for mi in $(kubectl get machineinventory -n fleet-default -l test-group=2-sites-5-vms -o name 2>/dev/null); do
+            for mi in $(kubectl get machineinventory -n fleet-default -l test-group=dual-site-multinode -o name 2>/dev/null); do
                 kubectl patch "$mi" -n fleet-default -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
                 kubectl delete "$mi" -n fleet-default --wait=false 2>/dev/null || true
             done
@@ -216,12 +216,12 @@ else
         
         echo ""
         echo "Cleaning up Clusters..."
-        CLUSTER_COUNT=$(kubectl get cluster -n fleet-default -l test-group=2-sites-5-vms --no-headers 2>/dev/null | wc -l || echo "0")
+        CLUSTER_COUNT=$(kubectl get cluster -n fleet-default -l test-group=dual-site-multinode --no-headers 2>/dev/null | wc -l || echo "0")
         if [ "$CLUSTER_COUNT" -gt 0 ]; then
             echo "  Found $CLUSTER_COUNT Clusters, deleting..."
-            kubectl delete cluster -n fleet-default -l test-group=2-sites-5-vms --wait=false 2>/dev/null || true
+            kubectl delete cluster -n fleet-default -l test-group=dual-site-multinode --wait=false 2>/dev/null || true
             # Force delete with finalizers if needed
-            for cluster in $(kubectl get cluster -n fleet-default -l test-group=2-sites-5-vms -o name 2>/dev/null); do
+            for cluster in $(kubectl get cluster -n fleet-default -l test-group=dual-site-multinode -o name 2>/dev/null); do
                 kubectl patch "$cluster" -n fleet-default -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
                 kubectl delete "$cluster" -n fleet-default --wait=false 2>/dev/null || true
             done
@@ -232,10 +232,10 @@ else
         
         echo ""
         echo "Cleaning up MachineInventorySelectorTemplates..."
-        MIST_COUNT=$(kubectl get machineinventoryselectortemplate -n fleet-default -l test-group=2-sites-5-vms --no-headers 2>/dev/null | wc -l || echo "0")
+        MIST_COUNT=$(kubectl get machineinventoryselectortemplate -n fleet-default -l test-group=dual-site-multinode --no-headers 2>/dev/null | wc -l || echo "0")
         if [ "$MIST_COUNT" -gt 0 ]; then
             echo "  Found $MIST_COUNT MachineInventorySelectorTemplates, deleting..."
-            kubectl delete machineinventoryselectortemplate -n fleet-default -l test-group=2-sites-5-vms --wait=false 2>/dev/null || true
+            kubectl delete machineinventoryselectortemplate -n fleet-default -l test-group=dual-site-multinode --wait=false 2>/dev/null || true
             echo -e "  ${GREEN}OK:${NC} MachineInventorySelectorTemplates deleted"
         else
             echo "  No MachineInventorySelectorTemplates found"
@@ -243,12 +243,12 @@ else
         
         echo ""
         echo "Cleaning up Fleet clusters (clusters.fleet.cattle.io)..."
-        FLEET_CLUSTER_COUNT=$(kubectl get clusters.fleet.cattle.io -n fleet-default -l test-group=2-sites-5-vms --no-headers 2>/dev/null | wc -l || echo "0")
+        FLEET_CLUSTER_COUNT=$(kubectl get clusters.fleet.cattle.io -n fleet-default -l test-group=dual-site-multinode --no-headers 2>/dev/null | wc -l || echo "0")
         if [ "$FLEET_CLUSTER_COUNT" -gt 0 ]; then
             echo "  Found $FLEET_CLUSTER_COUNT Fleet clusters, deleting..."
-            kubectl delete clusters.fleet.cattle.io -n fleet-default -l test-group=2-sites-5-vms --wait=false 2>/dev/null || true
+            kubectl delete clusters.fleet.cattle.io -n fleet-default -l test-group=dual-site-multinode --wait=false 2>/dev/null || true
             # Force delete with finalizers if needed
-            for fc in $(kubectl get clusters.fleet.cattle.io -n fleet-default -l test-group=2-sites-5-vms -o name 2>/dev/null); do
+            for fc in $(kubectl get clusters.fleet.cattle.io -n fleet-default -l test-group=dual-site-multinode -o name 2>/dev/null); do
                 kubectl patch "$fc" -n fleet-default -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
                 kubectl delete "$fc" -n fleet-default --wait=false 2>/dev/null || true
             done

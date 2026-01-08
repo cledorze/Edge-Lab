@@ -1,0 +1,3 @@
+site-name,namespace,distro,k8s-version,cp-nodes,worker-nodes,single-node,vip,labels
+site-a-cluster,fleet-default,k3s,v1.31.4+k3s1,3,2,false,100.100.100.240,site-id=site-a,test-group=dual-site-multinode
+site-b-cluster,fleet-default,k3s,v1.31.4+k3s1,3,2,false,100.100.100.241,site-id=site-b,test-group=dual-site-multinode

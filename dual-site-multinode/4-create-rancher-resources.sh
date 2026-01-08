@@ -134,11 +134,11 @@ echo ""
 
 # Check MachineInventorySelectorTemplates
 echo "MachineInventorySelectorTemplates:"
-kubectl get machineinventoryselectortemplate -n fleet-default -l test-group=2-sites-5-vms || echo "  None found yet (will be created when VMs register)"
+kubectl get machineinventoryselectortemplate -n fleet-default -l test-group=dual-site-multinode || echo "  None found yet (will be created when VMs register)"
 
 echo ""
 echo "Clusters:"
-kubectl get cluster -n fleet-default -l test-group=2-sites-5-vms || echo "  None found yet"
+kubectl get cluster -n fleet-default -l test-group=dual-site-multinode || echo "  None found yet"
 
 echo ""
 echo "ClusterGroups:"

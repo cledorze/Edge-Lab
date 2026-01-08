@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+KUBECONFIG_PATH="/home/tofix/LAB/AI/Edge-3.4/rancher-kubeconfig.yaml"
+export KUBECONFIG="$KUBECONFIG_PATH"
+
 # Script version
 SCRIPT_VERSION="1.0.0"
 
@@ -294,16 +297,18 @@ spec:
     machinePools:
 ${machine_pools}"
     
-    # Add VIP configuration if provided
+    # Add VIP and HA configuration if provided
     if [ -n "$vip" ]; then
         cluster_yaml="${cluster_yaml}
-    controlPlaneConfig:
-      clusterUpgradeStrategy:
-        controlPlaneConcurrency: \"1\"
-        workerConcurrency: \"1\"
-    localClusterAuthEndpoint:
-      enabled: true
-      fqdn: ${vip}"
+    machineGlobalConfig:
+      tls-san:
+        - ${vip}
+    upgradeStrategy:
+      controlPlaneConcurrency: \"1\"
+      workerConcurrency: \"1\"
+  localClusterAuthEndpoint:
+    enabled: true
+    fqdn: ${vip}"
     fi
     
     echo "$cluster_yaml"

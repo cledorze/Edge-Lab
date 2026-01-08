@@ -73,12 +73,12 @@ else
         
         kubectl label clusters.fleet.cattle.io "$cluster" -n fleet-default \
             "site-id=$site_id" \
-            "test-group=2-sites-5-vms" \
+            "test-group=dual-site-multinode" \
             --overwrite 2>/dev/null || {
             echo "  WARNING: Failed to label Fleet cluster $cluster"
             continue
         }
-        echo "  OK: Fleet cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms (fallback method)"
+        echo "  OK: Fleet cluster $cluster labeled with site-id=$site_id, test-group=dual-site-multinode (fallback method)"
     done
 fi
 
@@ -113,12 +113,12 @@ else
         
         kubectl label cluster.provisioning.cattle.io "$cluster" -n fleet-default \
             "site-id=$site_id" \
-            "test-group=2-sites-5-vms" \
+            "test-group=dual-site-multinode" \
             --overwrite 2>/dev/null || {
             echo "  WARNING: Failed to label provisioning cluster $cluster"
             continue
         }
-        echo "  OK: Provisioning cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms"
+        echo "  OK: Provisioning cluster $cluster labeled with site-id=$site_id, test-group=dual-site-multinode"
     done
 fi
 
@@ -153,12 +153,12 @@ else
         
         kubectl label cluster.cluster.x-k8s.io "$cluster" -n fleet-default \
             "site-id=$site_id" \
-            "test-group=2-sites-5-vms" \
+            "test-group=dual-site-multinode" \
             --overwrite 2>/dev/null || {
             echo "  WARNING: Failed to label CAPI cluster $cluster"
             continue
         }
-        echo "  OK: CAPI cluster $cluster labeled with site-id=$site_id, test-group=2-sites-5-vms"
+        echo "  OK: CAPI cluster $cluster labeled with site-id=$site_id, test-group=dual-site-multinode"
     done
 fi
 
