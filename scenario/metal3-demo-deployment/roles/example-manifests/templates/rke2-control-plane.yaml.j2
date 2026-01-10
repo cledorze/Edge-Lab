@@ -1,0 +1,123 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: {{ cluster_name }}
+  namespace: {{ cluster_namespace }}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+{% if libvirt_network_ipv4|bool %}
+        - {{ cluster_network_cidr_v4 }}
+{% endif %}
+{% if libvirt_network_ipv6|bool %}
+        - {{ cluster_network_cidr_v6 }}
+{% endif %}
+    services:
+      cidrBlocks:
+{% if libvirt_network_ipv4|bool %}
+        - {{ service_network_cidr_v4 }}
+{% endif %}
+{% if libvirt_network_ipv6|bool %}
+        - {{ service_network_cidr_v6 }}
+{% endif %}
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: RKE2ControlPlane
+    name: {{ cluster_name }}
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: Metal3Cluster
+    name: {{ cluster_name }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: Metal3Cluster
+metadata:
+  name: {{ cluster_name }}
+  namespace: {{ cluster_namespace }}
+spec:
+  controlPlaneEndpoint:
+    host: {{ controlplane_endpoint_v4 if libvirt_network_ipv4|bool else controlplane_endpoint_v6 }}
+    port: 6443
+  noCloudProvider: true
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: RKE2ControlPlane
+metadata:
+  name: {{ cluster_name }}
+  namespace: {{ cluster_namespace }}
+spec:
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: Metal3MachineTemplate
+    name: {{ cluster_name }}-controlplane
+  replicas: {{ num_controlplane_hosts }}
+  version: {{ cluster_rke2_version }}
+  rolloutStrategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxSurge: 0
+  registrationMethod: "control-plane-endpoint"
+  agentConfig:
+    format: ignition
+    kubelet:
+      extraArgs:
+        - provider-id=metal3://BAREMETALHOST_UUID
+    additionalUserData:
+      config: |
+        variant: fcos
+        version: 1.4.0
+        systemd:
+          units:
+            - name: rke2-preinstall.service
+              enabled: true
+              contents: |
+                [Unit]
+                Description=rke2-preinstall
+                Wants=network-online.target
+                Before=rke2-install.service
+                ConditionPathExists=!/run/cluster-api/bootstrap-success.complete
+                [Service]
+                Type=oneshot
+                User=root
+                ExecStartPre=/bin/sh -c "mount -L config-2 /mnt"
+                ExecStart=/bin/sh -c "sed -i \"s/BAREMETALHOST_UUID/$(jq -r .uuid /mnt/openstack/latest/meta_data.json)/\" /etc/rancher/rke2/config.yaml"
+                ExecStart=/bin/sh -c "echo \"node-name: $(jq -r .name /mnt/openstack/latest/meta_data.json)\" >> /etc/rancher/rke2/config.yaml"
+                ExecStartPost=/bin/sh -c "umount /mnt"
+                [Install]
+                WantedBy=multi-user.target
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: Metal3MachineTemplate
+metadata:
+  name: {{ cluster_name }}-controlplane
+  namespace: {{ cluster_namespace }}
+spec:
+  template:
+    spec:
+      dataTemplate:
+        name: {{ cluster_name }}-controlplane-template
+      hostSelector:
+        matchLabels:
+          cluster-role: control-plane
+      image:
+        checksum: https://imagecache.local:8443/{{ downstream_cluster_image }}.sha256
+        checksumType: sha256
+        format: raw
+        url: https://imagecache.local:8443/{{ downstream_cluster_image }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: Metal3DataTemplate
+metadata:
+  name: {{ cluster_name }}-controlplane-template
+  namespace: {{ cluster_namespace }}
+spec:
+  clusterName: {{ cluster_name }}
+  metaData:
+    objectNames:
+      - key: name
+        object: machine
+      - key: local-hostname
+        object: machine
+      - key: local_hostname
+        object: machine

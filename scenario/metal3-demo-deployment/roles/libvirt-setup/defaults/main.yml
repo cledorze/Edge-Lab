@@ -1,0 +1,103 @@
+libvirt_action: "setup"
+
+libvirt_domain_type: "kvm"
+libvirt_volume_pool: "default"
+libvirt_diskdev: sda
+libvirt_cdromdev: sdb
+libvirt_diskbus: scsi
+libvirt_cdrombus: sata
+libvirt_arch: x86_64
+libvirt_firmware: efi # bios or efi
+libvirt_secure_boot: false
+libvirt_tpm_emulator: false
+libvirt_nic_model: virtio
+
+# Set to false for DHCP-less testing with static-ips
+libvirt_network_dhcp: true
+
+# Set to true for dual-stack testing with ipv6
+libvirt_network_ipv6: false
+
+# Can be set to false for single-stack testing with ipv6
+libvirt_network_ipv4: true
+
+# Where to log serial console output
+libvirt_log_path: "/var/log/libvirt/qemu"
+
+libvirt_images_dir: "/var/lib/libvirt/images"
+working_dir: "{{ lookup('env', 'HOME') }}/metal3-demo-files"
+libvirt_bmh_manifest_dir: "{{ working_dir }}/baremetalhosts"
+
+libvirt_uri: qemu:///system
+
+# On Ubuntu /var/lib/libvirt/images is already configured as the
+# images pool so use a different dir for the default pool
+libvirt_default_pool_dir: "{{libvirt_images_dir}}/pool-default"
+
+external_network_cidr_v4: 192.168.125.0/24
+external_network_bridge_ip_v4: "{{ external_network_cidr_v4|ansible.utils.nthhost(1)|default('', true) }}"
+external_network_dhcp_range_v4:
+  - "{{ external_network_cidr_v4|ansible.utils.nthhost(200)|default('', true) }}"
+  - "{{ external_network_cidr_v4|ansible.utils.nthhost(250)|default('', true) }}"
+external_network_static_ip_start_v4: "{{ external_network_cidr_v4|ansible.utils.nthhost(200)|default('', true) }}"
+
+external_network_cidr_v6: fd55::/64
+external_network_bridge_ip_v6: "{{ external_network_cidr_v6|ansible.utils.nthhost(1)|default('', true) }}"
+external_network_dhcp_range_v6:
+  - "{{ external_network_cidr_v6|ansible.utils.nthhost(200)|default('', true) }}"
+  - "{{ external_network_cidr_v6|ansible.utils.nthhost(250)|default('', true) }}"
+external_network_static_ip_start_v6: "{{ external_network_cidr_v6|ansible.utils.nthhost(200)|default('', true) }}"
+
+libvirt_networks:
+  - name: external
+    bridge: m3-external
+    address_v4: "{{ external_network_bridge_ip_v4 if libvirt_network_ipv4|bool else '' }}"
+    netmask_v4: "{{ external_network_cidr_v4|ansible.utils.ipaddr('netmask') }}"
+    dhcp_range_v4: "{{ external_network_dhcp_range_v4 if libvirt_network_dhcp else [] }}"
+    static_ip_start_v4: "{{ '' if libvirt_network_dhcp|bool else external_network_static_ip_start_v4 }}"
+    address_v6: "{{ external_network_bridge_ip_v6 if libvirt_network_ipv6|bool else '' }}"
+    prefix_v6: "{{ external_network_cidr_v6|ansible.utils.ipaddr('prefix') }}"
+    dhcp_range_v6: "{{ external_network_dhcp_range_v6 if libvirt_network_dhcp else [] }}"
+    static_ip_start_v6: "{{ '' if libvirt_network_dhcp|bool else external_network_static_ip_start_v6 }}"
+    dns:
+      hosts:
+        - ip: "{{ external_network_bridge_ip_v4 if libvirt_network_ipv4|bool else external_network_bridge_ip_v6 }}"
+          hostnames:
+            - imagecache.local
+
+node_ip_map_override:
+  management_0:
+    external_v4: "{{ management_cluster_public_ip }}"
+    external_v6: "{{ management_cluster_public_ip_v6 }}"
+
+libvirt_flavors:
+  management:
+    cluster_role: management-cluster
+    memory: 8192
+    disk: 0
+    vcpu: 4
+
+  controlplane:
+    cluster_role: control-plane
+    memory: 4096
+    disk: 30
+    vcpu: 4
+
+  worker:
+    cluster_role: worker
+    memory: 4096
+    disk: 30
+    vcpu: 4
+
+# Optionally specifiy a prefix e.g for each cluster
+libvirt_host_prefix: ""
+
+num_management_hosts: 1
+num_controlplane_hosts: 1
+num_worker_hosts: 1
+
+# BMC credentials
+vbmc_username: "admin"
+vbmc_password: "password"
+vbmc_port: "{{ sushy_tools_port | default(8000) }}"
+vbmc_ip: "{{ external_network_bridge_ip_v4 if libvirt_network_ipv4|bool else external_network_bridge_ip_v6 }}"

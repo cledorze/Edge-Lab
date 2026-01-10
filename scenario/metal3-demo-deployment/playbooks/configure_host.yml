@@ -1,0 +1,12 @@
+---
+- name: Configure host
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  tasks:
+    - import_role:
+        name: libvirt-setup
+    - import_role:
+        name: image-cache
+    - import_role:
+        name: sushy-tools

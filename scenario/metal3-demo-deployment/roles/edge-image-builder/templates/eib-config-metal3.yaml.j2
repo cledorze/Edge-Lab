@@ -1,0 +1,23 @@
+apiVersion: 1.0
+image:
+  imageType: raw
+  arch: x86_64
+  baseImage: {{ eib_source_image_name }}
+  outputImageName: {{ eib_metal3_output_image_name }}
+operatingSystem:
+  kernelArgs:
+  - ignition.platform.id=openstack
+  - net.ifnames=1
+  users:
+  - username: root
+    encryptedPassword: "{{ vm_user_plain_text_password | password_hash }}"
+  - username: {{ vm_user }}
+    sshKeys: {{ vm_authorized_ssh_keys | to_yaml }}
+    encryptedPassword: "{{ vm_user_plain_text_password | password_hash }}"
+    createHomeDir: true
+  packages:
+    packageList:
+      - jq
+{% if eib_source_image_slemicro | bool %}
+    sccRegistrationCode: "{{ eib_registration_code }}"
+{% endif %}

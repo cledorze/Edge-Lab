@@ -1,0 +1,4 @@
+---
+- include_tasks: node_ip_map_tasks.yml
+  when: network.static_ip_start_v4 != ''
+  loop: "{{ vm_nodes }}"

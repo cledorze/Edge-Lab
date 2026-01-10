@@ -1,0 +1,63 @@
+apiVersion: 1.0
+image:
+  imageType: raw
+  arch: x86_64
+  baseImage: {{ eib_source_image_name }}
+  outputImageName: {{ eib_mgmt_output_image_name }}
+operatingSystem:
+  rawConfiguration:
+    diskSize: {{ eib_image_size }}
+  kernelArgs:
+  - net.ifnames=1
+  users:
+  - username: root
+    encryptedPassword: "{{ vm_user_plain_text_password | password_hash }}"
+  - username: {{ vm_user }}
+    sshKeys: {{ vm_authorized_ssh_keys | to_yaml }}
+    encryptedPassword: "{{ vm_user_plain_text_password | password_hash }}"
+    createHomeDir: true
+  packages:
+    packageList:
+      - jq
+{% if eib_source_image_slemicro | bool %}
+    sccRegistrationCode: "{{ eib_registration_code }}"
+{% endif %}
+kubernetes:
+  version: {{ cluster_rke2_version }}
+  helm:
+    charts:
+      - name: cert-manager
+        repositoryName: jetstack
+        version: {{ cert_manager_version }}
+        targetNamespace: cert-manager
+        valuesFile: certmanager-values.yaml
+        createNamespace: true
+        installationNamespace: kube-system
+      - name: metal3
+        version: {{ metal3_version }}
+        repositoryName: suse-edge-charts
+        targetNamespace: metal3-system
+        createNamespace: true
+        installationNamespace: kube-system
+        valuesFile: metal3-values.yaml
+      - name: rancher
+        version: {{ rancher_version }}
+        repositoryName: rancher-charts
+        targetNamespace: cattle-system
+        createNamespace: true
+        installationNamespace: kube-system
+        valuesFile: rancher-values.yaml
+      - name: rancher-turtles
+        version: {{ rancher_turtles_version }}
+        repositoryName: suse-edge-charts
+        targetNamespace: rancher-turtles-system
+        createNamespace: true
+        installationNamespace: kube-system
+        valuesFile: turtles-values.yaml
+    repositories:
+      - name: jetstack
+        url: https://charts.jetstack.io
+      - name: rancher-charts
+        url: {{ rancher_helm_repo }}
+      - name: suse-edge-charts
+        url: {{ suse_edge_helm_repo }}

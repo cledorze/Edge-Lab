@@ -1,0 +1,96 @@
+packages:
+  ubuntu:
+    - git
+    - libvirt-clients
+    - qemu-kvm
+    - libvirt-daemon-system
+    - python3-pip
+    - pkg-config
+    - libvirt-dev
+    - mkisofs
+    - qemu
+    - virtinst
+    - qemu-efi
+    - sshpass
+    - libguestfs-tools
+    - podman
+    - python3-lxml
+    - python3-netaddr
+    - python3-passlib
+  leap15:
+    - gcc
+    - git
+    - guestfs-tools
+    - libguestfs
+    - libvirt
+    - libvirt-client
+    - libvirt-devel
+    - mkisofs
+    - pkg-config
+    - podman
+    - python311-devel
+    - python311-libvirt-python
+    - python311-lxml
+    - python311-netaddr
+    - python311-passlib
+    - python311-pip
+    - qemu
+    - qemu-kvm
+    - sshpass
+    - virt-install
+  leap16:
+    - gcc
+    - git-core
+    - guestfs-tools
+    - libguestfs
+    - libvirt
+    - libvirt-daemon
+    - libvirt-dbus
+    - libvirt-client
+    - libvirt-devel
+    - libvirt-daemon-qemu
+    - libvirt-daemon-config-nwfilter
+    - mkisofs
+    - pkg-config
+    - podman
+    - python313-devel
+    - python313-libvirt-python
+    - python313-lxml
+    - python313-netaddr
+    - python313-passlib
+    - python313-pip
+    - qemu
+    - qemu-kvm
+    - sshpass
+    - virt-install
+  tumbleweed:
+    - gcc
+    - git-core
+    - guestfs-tools
+    - libguestfs
+    - libvirt
+    - libvirt-daemon
+    - libvirt-dbus
+    - libvirt-client
+    - libvirt-devel
+    - libvirt-daemon-qemu
+    - libvirt-daemon-config-nwfilter
+    - mkisofs
+    - pkg-config
+    - podman
+    - python313-devel
+    - python313-libvirt-python
+    - python313-lxml
+    - python313-netaddr
+    - python313-passlib
+    - python313-pip
+    - qemu
+    - qemu-kvm
+    - sshpass
+    - virt-install
+  pip3:
+    - libvirt-python
+
+repos:
+  opensuse:
+    - "https://download.opensuse.org/repositories/devel:/languages:/python:/backports/15.6/devel:languages:python:backports.repo"

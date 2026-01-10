@@ -1,0 +1,14 @@
+- name: "Create {{ example_manifest_dir }}"
+  file:
+    path: "{{ example_manifest_dir }}"
+    state: directory
+
+- name: Generate cluster controlplane manifest
+  template:
+    src: "rke2-control-plane.yaml.j2"
+    dest: "{{ example_manifest_dir }}/rke2-control-plane.yaml"
+
+- name: Generate cluster agent manifest
+  template:
+    src: "rke2-agent.yaml.j2"
+    dest: "{{ example_manifest_dir }}/rke2-agent.yaml"
