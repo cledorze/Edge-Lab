@@ -82,7 +82,13 @@ fi
 
 # EIB directory configuration (local EIB directory)
 # Resolve symlinks to avoid missing output artifacts.
-EIB_DIR="$(readlink -f "${PROJECT_ROOT}/EIB")"
+EIB_DIR=""
+for candidate in "${PROJECT_ROOT}/EIB" "${PROJECT_ROOT}/../EIB"; do
+    if [ -d "$candidate" ]; then
+        EIB_DIR="$(readlink -f "$candidate")"
+        break
+    fi
+done
 EIB_BUILD_SCRIPT="${EIB_DIR}/build-eib-image.sh"
 EIB_DEFINITION_FILE="${EIB_DIR}/iso-VM-definition.yaml"
 
