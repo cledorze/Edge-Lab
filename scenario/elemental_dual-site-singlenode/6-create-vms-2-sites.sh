@@ -89,6 +89,12 @@ check_prerequisites() {
         log_error "virt-install is not installed"
         exit 1
     fi
+
+    if ! command -v swtpm &> /dev/null; then
+        log_error "swtpm is not installed (required for TPM emulation)"
+        log_info "Install with: sudo zypper in -y swtpm"
+        exit 1
+    fi
     
     if ! systemctl is-active --quiet libvirtd; then
         log_warn "libvirtd is not running, attempting to start..."
@@ -172,6 +178,7 @@ create_vm() {
         --network bridge="$BRIDGE",model=virtio,mac="$VM_MAC" \
         --cdrom "$iso_path" \
         --boot cdrom,hd \
+        --tpm backend.type=emulator,backend.version=2.0,model=tpm-crb \
         --graphics vnc,listen=0.0.0.0 \
         --console pty,target_type=serial \
         --noautoconsole \
@@ -187,6 +194,7 @@ create_vm() {
         --network bridge="$BRIDGE",model=virtio,mac="$VM_MAC" \
         --cdrom "$iso_path" \
         --boot cdrom,hd \
+        --tpm backend.type=emulator,backend.version=2.0,model=tpm-crb \
         --graphics vnc,listen=0.0.0.0 \
         --console pty,target_type=serial \
         --noautoconsole \

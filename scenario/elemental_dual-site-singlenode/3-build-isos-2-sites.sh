@@ -17,9 +17,6 @@
 
 set -e
 
-KUBECONFIG_PATH="/home/tofix/LAB/AI/Edge-3.4/rancher-kubeconfig.yaml"
-export KUBECONFIG="$KUBECONFIG_PATH"
-
 # Trap to ensure cleanup happens even on error
 # Note: Files are COPIED (not moved) so originals remain safe
 cleanup() {
@@ -60,8 +57,32 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ELEMENTAL_DIR="${PROJECT_ROOT}/generated/elemental"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 
+# Resolve kubeconfig without hardcoded paths.
+KUBECONFIG_PATH=""
+if [ -n "${KUBECONFIG:-}" ] && [ -f "$KUBECONFIG" ]; then
+    KUBECONFIG_PATH="$KUBECONFIG"
+else
+    for candidate in \
+        "${PROJECT_ROOT}/rancher-kubeconfig.yaml" \
+        "${PROJECT_ROOT}/../rancher-kubeconfig.yaml" \
+        "/etc/rancher/rke2/rke2.yaml"; do
+        if [ -f "$candidate" ]; then
+            KUBECONFIG_PATH="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -n "$KUBECONFIG_PATH" ]; then
+    export KUBECONFIG="$KUBECONFIG_PATH"
+    log_info "Using KUBECONFIG: $KUBECONFIG_PATH"
+else
+    log_warn "KUBECONFIG not set and no default file found; continuing without it."
+fi
+
 # EIB directory configuration (local EIB directory)
-EIB_DIR="${PROJECT_ROOT}/EIB"
+# Resolve symlinks to avoid missing output artifacts.
+EIB_DIR="$(readlink -f "${PROJECT_ROOT}/EIB")"
 EIB_BUILD_SCRIPT="${EIB_DIR}/build-eib-image.sh"
 EIB_DEFINITION_FILE="${EIB_DIR}/iso-VM-definition.yaml"
 
@@ -79,6 +100,28 @@ log_info "Using Elemental config files:"
 log_info "  Site A: $CONFIG_A"
 log_info "  Site B: $CONFIG_B"
 echo ""
+
+# Ensure there is enough free space for EIB builds.
+check_disk_space() {
+    local min_gb=20
+    local target_dir="$EIB_DIR"
+    local avail_kb
+    avail_kb=$(df -Pk "$target_dir" | awk 'NR==2 {print $4}')
+    if [ -z "$avail_kb" ]; then
+        log_warn "Unable to determine disk space for $target_dir"
+        return 0
+    fi
+    local avail_gb=$((avail_kb / 1024 / 1024))
+    if [ "$avail_gb" -lt "$min_gb" ]; then
+        log_warn "Low disk space (${avail_gb}G available). Cleaning old EIB build artifacts..."
+        rm -rf "${EIB_DIR}/output/build-"* 2>/dev/null || true
+        avail_kb=$(df -Pk "$target_dir" | awk 'NR==2 {print $4}')
+        avail_gb=$((avail_kb / 1024 / 1024))
+        if [ "$avail_gb" -lt "$min_gb" ]; then
+            log_error "Not enough disk space after cleanup (${avail_gb}G available). Need at least ${min_gb}G."
+        fi
+    fi
+}
 
 # Check and setup EIB directory
 setup_eib() {
@@ -118,6 +161,7 @@ setup_eib() {
 
 # Setup EIB build environment
 setup_eib
+check_disk_space
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"

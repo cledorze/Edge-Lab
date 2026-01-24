@@ -141,34 +141,53 @@ echo ""
 # Create elemental directory if it doesn't exist
 mkdir -p "$ELEMENTAL_DIR"
 
-# Download elemental_config.yaml from each endpoint
-# The registration URL itself returns the YAML config when accessed with Accept: application/yaml header
-
-echo "Downloading elemental_config for Site A..."
-
 SITE_A_DOWNLOADED=false
-# The registration URL itself returns the YAML config when accessed with proper headers
-if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_config-site-a.yaml" "$SITE_A_URL" 2>/dev/null; then
-    FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-a.yaml" 2>/dev/null || echo "0")
-    if [ "$FILE_SIZE" -gt 50 ]; then
-        echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-a.yaml ($FILE_SIZE bytes)"
-        
-        # Add install section if missing (Rancher registration endpoint only returns registration section)
-        # Check if install section exists
-        if ! grep -q "install:" "$ELEMENTAL_DIR/elemental_config-site-a.yaml"; then
-            echo "  Adding install section (required for K3s deployment)..."
-            # Extract registration section (everything from "registration:" onwards, preserving indentation)
-            REGISTRATION_LINE=$(grep -n "registration:" "$ELEMENTAL_DIR/elemental_config-site-a.yaml" | head -1 | cut -d: -f1)
-            if [ -n "$REGISTRATION_LINE" ]; then
-                # Get everything from registration line onwards
-                tail -n +$REGISTRATION_LINE "$ELEMENTAL_DIR/elemental_config-site-a.yaml" > "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp"
-            else
-                # Fallback: use entire file
-                cat "$ELEMENTAL_DIR/elemental_config-site-a.yaml" > "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp"
+SITE_B_DOWNLOADED=false
+
+download_config() {
+    local site_label="$1"
+    local url="$2"
+    local target_file="$3"
+    local attempts=5
+    local attempt=1
+
+    echo "Downloading elemental_config for ${site_label}..."
+    rm -f "$target_file"
+
+    while [ $attempt -le $attempts ]; do
+        if curl -s -f -k -H "Accept: application/yaml" -o "$target_file.tmp" "$url" 2>/dev/null; then
+            local file_size
+            file_size=$(stat -f%z "$target_file.tmp" 2>/dev/null || stat -c%s "$target_file.tmp" 2>/dev/null || echo "0")
+            if [ "$file_size" -gt 50 ]; then
+                mv "$target_file.tmp" "$target_file"
+                echo "OK: Downloaded: $target_file ($file_size bytes)"
+                return 0
             fi
-            
-            # Create complete config with install section first
-            cat > "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp" << 'EOF'
+        fi
+
+        echo "  WARNING: download attempt ${attempt}/${attempts} failed"
+        rm -f "$target_file.tmp"
+        sleep 3
+        attempt=$((attempt + 1))
+    done
+
+    echo "ERROR: Failed to download elemental_config for ${site_label}"
+    echo "   Registration URL: $url"
+    exit 1
+}
+
+add_install_and_reset() {
+    local config_file="$1"
+    if ! grep -q "install:" "$config_file"; then
+        echo "  Adding install section (required for K3s deployment)..."
+        REGISTRATION_LINE=$(grep -n "registration:" "$config_file" | head -1 | cut -d: -f1)
+        if [ -n "$REGISTRATION_LINE" ]; then
+            tail -n +$REGISTRATION_LINE "$config_file" > "${config_file}.reg.tmp"
+        else
+            cat "$config_file" > "${config_file}.reg.tmp"
+        fi
+
+        cat > "${config_file}.tmp" << 'EOF'
 elemental:
     install:
         device: ""  # Auto-detected: first disk matching selector
@@ -187,125 +206,32 @@ elemental:
         snapshotter:
             type: btrfs
 EOF
-            # Append registration section (preserve original indentation)
-            cat "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp" >> "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp"
-            rm -f "$ELEMENTAL_DIR/elemental_config-site-a.reg.tmp"
-            
-            # Add reset section if not present
-            if ! grep -q "reset:" "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp"; then
-                cat >> "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp" << 'EOF'
+        cat "${config_file}.reg.tmp" >> "${config_file}.tmp"
+        rm -f "${config_file}.reg.tmp"
+
+        if ! grep -q "reset:" "${config_file}.tmp"; then
+            cat >> "${config_file}.tmp" << 'EOF'
     reset:
         reboot: true
         reset-oem: true
         reset-persistent: true
 EOF
-            fi
-            mv "$ELEMENTAL_DIR/elemental_config-site-a.yaml.tmp" "$ELEMENTAL_DIR/elemental_config-site-a.yaml"
-            echo "  OK: Install section added"
         fi
-        
-        SITE_A_DOWNLOADED=true
-    else
-        echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
-        echo "   Please download manually from Rancher UI:"
-        echo "   1. Go to Elemental → Registration Endpoints"
-        echo "   2. Click on 'site-a-registration'"
-        echo "   3. Download 'elemental_config.yaml'"
-        echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-a.yaml"
-        echo "   Registration URL: $SITE_A_URL"
-        rm -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml"
+
+        mv "${config_file}.tmp" "$config_file"
+        echo "  OK: Install section added"
     fi
-else
-    echo "WARNING:  Could not download Site A config automatically"
-    echo "   Please download manually from Rancher UI:"
-    echo "   1. Go to Elemental → Registration Endpoints"
-    echo "   2. Click on 'site-a-registration'"
-    echo "   3. Download 'elemental_config.yaml'"
-    echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-a.yaml"
-    echo "   Registration URL: $SITE_A_URL"
-fi
+}
+
+download_config "Site A" "$SITE_A_URL" "$ELEMENTAL_DIR/elemental_config-site-a.yaml"
+SITE_A_DOWNLOADED=true
+add_install_and_reset "$ELEMENTAL_DIR/elemental_config-site-a.yaml"
 
 echo ""
-echo "Downloading elemental_config for Site B..."
 
-SITE_B_DOWNLOADED=false
-# The registration URL itself returns the YAML config when accessed with proper headers
-if curl -s -f -k -H "Accept: application/yaml" -o "$ELEMENTAL_DIR/elemental_config-site-b.yaml" "$SITE_B_URL" 2>/dev/null; then
-    FILE_SIZE=$(stat -f%z "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || stat -c%s "$ELEMENTAL_DIR/elemental_config-site-b.yaml" 2>/dev/null || echo "0")
-    if [ "$FILE_SIZE" -gt 50 ]; then
-        echo "OK: Downloaded: $ELEMENTAL_DIR/elemental_config-site-b.yaml ($FILE_SIZE bytes)"
-        
-        # Add install section if missing (Rancher registration endpoint only returns registration section)
-        # Check if install section exists
-        if ! grep -q "install:" "$ELEMENTAL_DIR/elemental_config-site-b.yaml"; then
-            echo "  Adding install section (required for K3s deployment)..."
-            # Extract registration section (everything from "registration:" onwards, preserving indentation)
-            REGISTRATION_LINE=$(grep -n "registration:" "$ELEMENTAL_DIR/elemental_config-site-b.yaml" | head -1 | cut -d: -f1)
-            if [ -n "$REGISTRATION_LINE" ]; then
-                # Get everything from registration line onwards
-                tail -n +$REGISTRATION_LINE "$ELEMENTAL_DIR/elemental_config-site-b.yaml" > "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp"
-            else
-                # Fallback: use entire file
-                cat "$ELEMENTAL_DIR/elemental_config-site-b.yaml" > "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp"
-            fi
-            
-            # Create complete config with install section first
-            cat > "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp" << 'EOF'
-elemental:
-    install:
-        device: ""  # Auto-detected: first disk matching selector
-        device-selector:
-            - key: Name
-              operator: In
-              values:
-                  - /dev/sda
-                  - /dev/vda
-                  - /dev/nvme0
-            - key: Size
-              operator: Gt
-              values:
-                  - 20Gi
-        reboot: true
-        snapshotter:
-            type: btrfs
-EOF
-            # Append registration section (preserve original indentation)
-            cat "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp" >> "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp"
-            rm -f "$ELEMENTAL_DIR/elemental_config-site-b.reg.tmp"
-            
-            # Add reset section if not present
-            if ! grep -q "reset:" "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp"; then
-                cat >> "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp" << 'EOF'
-    reset:
-        reboot: true
-        reset-oem: true
-        reset-persistent: true
-EOF
-            fi
-            mv "$ELEMENTAL_DIR/elemental_config-site-b.yaml.tmp" "$ELEMENTAL_DIR/elemental_config-site-b.yaml"
-            echo "  OK: Install section added"
-        fi
-        
-        SITE_B_DOWNLOADED=true
-    else
-        echo "WARNING:  Downloaded file seems too small ($FILE_SIZE bytes)"
-        echo "   Please download manually from Rancher UI:"
-        echo "   1. Go to Elemental → Registration Endpoints"
-        echo "   2. Click on 'site-b-registration'"
-        echo "   3. Download 'elemental_config.yaml'"
-        echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-b.yaml"
-        echo "   Registration URL: $SITE_B_URL"
-        rm -f "$ELEMENTAL_DIR/elemental_config-site-b.yaml"
-    fi
-else
-    echo "WARNING:  Could not download Site B config automatically"
-    echo "   Please download manually from Rancher UI:"
-    echo "   1. Go to Elemental → Registration Endpoints"
-    echo "   2. Click on 'site-b-registration'"
-    echo "   3. Download 'elemental_config.yaml'"
-    echo "   4. Save as: $ELEMENTAL_DIR/elemental_config-site-b.yaml"
-    echo "   Registration URL: $SITE_B_URL"
-fi
+download_config "Site B" "$SITE_B_URL" "$ELEMENTAL_DIR/elemental_config-site-b.yaml"
+SITE_B_DOWNLOADED=true
+add_install_and_reset "$ELEMENTAL_DIR/elemental_config-site-b.yaml"
 
 echo ""
 echo "=== Step 4: Verification ==="
