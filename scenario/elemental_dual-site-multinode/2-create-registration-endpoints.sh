@@ -147,7 +147,7 @@ mkdir -p "$ELEMENTAL_DIR"
 SITE_A_DOWNLOADED=false
 SITE_B_DOWNLOADED=false
 
-def download_config() {
+download_config() {
     local site_label="$1"
     local url="$2"
     local target_file="$3"
@@ -179,7 +179,7 @@ def download_config() {
     exit 1
 }
 
-def add_install_and_reset() {
+add_install_and_reset() {
     local config_file="$1"
     if ! grep -q "install:" "$config_file"; then
         echo "  Adding install section (required for K3s deployment)..."
