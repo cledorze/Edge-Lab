@@ -30,8 +30,12 @@ export KUBECONFIG="$KUBECONFIG_FILE"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YAML_DIR="$SCRIPT_DIR/yaml"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ELEMENTAL_DIR="$PROJECT_ROOT/generated/elemental"
+SCENARIO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(git -C "$SCENARIO_ROOT" rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$PROJECT_ROOT" ]; then
+    PROJECT_ROOT="$(cd "$SCENARIO_ROOT/.." && pwd)"
+fi
+ELEMENTAL_DIR="$SCENARIO_ROOT/generated/elemental"
 
 echo "=========================================="
 echo "Create Registration Endpoints"
@@ -276,7 +280,10 @@ if [ "$SITE_A_DOWNLOADED" = true ] || [ "$SITE_B_DOWNLOADED" = true ]; then
         # Check if there are changes to commit
         FILES_TO_COMMIT=""
         # Use relative paths from project root for git commands
-        REL_ELEMENTAL_DIR="generated/elemental"
+        REL_ELEMENTAL_DIR="${ELEMENTAL_DIR#"$PROJECT_ROOT"/}"
+        if [ "$REL_ELEMENTAL_DIR" = "$ELEMENTAL_DIR" ]; then
+            REL_ELEMENTAL_DIR="scenario/generated/elemental"
+        fi
         if [ "$SITE_A_DOWNLOADED" = true ] && [ -f "$ELEMENTAL_DIR/elemental_config-site-a.yaml" ]; then
             FILES_TO_COMMIT="$FILES_TO_COMMIT $REL_ELEMENTAL_DIR/elemental_config-site-a.yaml"
         fi
