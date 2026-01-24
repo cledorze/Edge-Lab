@@ -19,7 +19,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YAML_DIR="$SCRIPT_DIR/yaml"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ZTP_SCRIPT="$PROJECT_ROOT/ztp-scale-nodes/ztp-precreate.sh"
-FLEET_DIR="$PROJECT_ROOT/fleet"
+FLEET_DIR=""
+for candidate in "$PROJECT_ROOT/fleet" "$PROJECT_ROOT/../fleet"; do
+    if [ -d "$candidate" ]; then
+        FLEET_DIR="$candidate"
+        break
+    fi
+done
 
 echo "=========================================="
 echo "Create Rancher Resources"
@@ -65,7 +71,7 @@ if [ ! -f "$YAML_DIR/vms-config-2-sites.csv" ]; then
 fi
 
 # Check that fleet directory exists
-if [ ! -d "$FLEET_DIR" ]; then
+if [ -z "$FLEET_DIR" ] || [ ! -d "$FLEET_DIR" ]; then
     echo "ERROR: fleet directory not found at $FLEET_DIR"
     echo "   Expected location: fleet/"
     exit 1

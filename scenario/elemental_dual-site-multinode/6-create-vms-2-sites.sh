@@ -71,6 +71,42 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Wait until all VMs are running.
+wait_for_vms_running() {
+    local vm_names=(
+        site-a-vm-01 site-a-vm-02 site-a-vm-03 site-a-vm-04 site-a-vm-05
+        site-b-vm-01 site-b-vm-02 site-b-vm-03 site-b-vm-04 site-b-vm-05
+    )
+    local total=${#vm_names[@]}
+    local timeout_sec=900
+    local start_ts
+    start_ts=$(date +%s)
+
+    log_info "Waiting for ${total} VMs to be running..."
+    while true; do
+        local running_count=0
+        for vm in "${vm_names[@]}"; do
+            if virsh --connect qemu:///system domstate "$vm" 2>/dev/null | grep -qi "running"; then
+                running_count=$((running_count + 1))
+            fi
+        done
+
+        echo "  Running: ${running_count}/${total}"
+        if [ "$running_count" -eq "$total" ]; then
+            log_info "All VMs are running."
+            return 0
+        fi
+
+        local now_ts
+        now_ts=$(date +%s)
+        if [ $((now_ts - start_ts)) -ge "$timeout_sec" ]; then
+            log_warn "Timeout waiting for VMs to be running after ${timeout_sec}s."
+            return 1
+        fi
+        sleep 10
+    done
+}
+
 # Use bridged networking
 BRIDGE="br0"
 if ! ip link show "$BRIDGE" &>/dev/null 2>&1; then
@@ -87,6 +123,12 @@ check_prerequisites() {
     
     if ! command -v virt-install &> /dev/null; then
         log_error "virt-install is not installed"
+        exit 1
+    fi
+
+    if ! command -v swtpm &> /dev/null; then
+        log_error "swtpm is not installed (required for TPM emulation)"
+        log_info "Install with: sudo zypper in -y swtpm"
         exit 1
     fi
     
@@ -172,6 +214,7 @@ create_vm() {
         --network bridge="$BRIDGE",model=virtio,mac="$VM_MAC" \
         --cdrom "$iso_path" \
         --boot cdrom,hd \
+        --tpm backend.type=emulator,backend.version=2.0,model=tpm-crb \
         --graphics vnc,listen=0.0.0.0 \
         --console pty,target_type=serial \
         --noautoconsole \
@@ -187,6 +230,7 @@ create_vm() {
         --network bridge="$BRIDGE",model=virtio,mac="$VM_MAC" \
         --cdrom "$iso_path" \
         --boot cdrom,hd \
+        --tpm backend.type=emulator,backend.version=2.0,model=tpm-crb \
         --graphics vnc,listen=0.0.0.0 \
         --console pty,target_type=serial \
         --noautoconsole \
@@ -243,6 +287,8 @@ main() {
     if [ "$PARALLEL_MODE" = true ]; then
         wait
     fi
+
+    wait_for_vms_running || true
     
     echo ""
     echo "=========================================="
