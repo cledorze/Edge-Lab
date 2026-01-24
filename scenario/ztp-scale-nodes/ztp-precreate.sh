@@ -297,13 +297,9 @@ ${machine_pools}"
     # Add VIP configuration if provided
     if [ -n "$vip" ]; then
         cluster_yaml="${cluster_yaml}
-    controlPlaneConfig:
-      clusterUpgradeStrategy:
-        controlPlaneConcurrency: \"1\"
-        workerConcurrency: \"1\"
-    localClusterAuthEndpoint:
-      enabled: true
-      fqdn: ${vip}"
+  localClusterAuthEndpoint:
+    enabled: true
+    fqdn: ${vip}"
     fi
     
     echo "$cluster_yaml"
