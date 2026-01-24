@@ -9,11 +9,29 @@
 
 set -e
 
-KUBECONFIG_PATH="/home/tofix/LAB/AI/Edge-3.4/rancher-kubeconfig.yaml"
-export KUBECONFIG="$KUBECONFIG_PATH"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YAML_DIR="$SCRIPT_DIR/yaml"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Resolve kubeconfig without hardcoded paths.
+KUBECONFIG_PATH=""
+if [ -n "${KUBECONFIG:-}" ] && [ -f "$KUBECONFIG" ]; then
+    KUBECONFIG_PATH="$KUBECONFIG"
+else
+    for candidate in \
+        "${PROJECT_ROOT}/rancher-kubeconfig.yaml" \
+        "${PROJECT_ROOT}/../rancher-kubeconfig.yaml" \
+        "/etc/rancher/rke2/rke2.yaml"; do
+        if [ -f "$candidate" ]; then
+            KUBECONFIG_PATH="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -n "$KUBECONFIG_PATH" ]; then
+    export KUBECONFIG="$KUBECONFIG_PATH"
+fi
 
 echo "=========================================="
 echo "Create Fleet Resources"
@@ -24,14 +42,14 @@ echo ""
 # Check prerequisites
 if ! command -v kubectl &> /dev/null; then
     echo "ERROR: kubectl is not available"
-    echo "   Configure KUBECONFIG: export KUBECONFIG=/home/tofix/LAB/AI/Edge-3.4/rancher-kubeconfig.yaml"
+    echo "   Configure KUBECONFIG (e.g., export KUBECONFIG=/etc/rancher/rke2/rke2.yaml)"
     exit 1
 fi
 
 # Check cluster connection
 if ! kubectl cluster-info &> /dev/null; then
     echo "ERROR: Cannot connect to Kubernetes cluster"
-    echo "   Configure KUBECONFIG: export KUBECONFIG=/home/tofix/LAB/AI/Edge-3.4/rancher-kubeconfig.yaml"
+    echo "   Configure KUBECONFIG (e.g., export KUBECONFIG=/etc/rancher/rke2/rke2.yaml)"
     exit 1
 fi
 
