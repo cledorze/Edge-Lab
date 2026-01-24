@@ -75,6 +75,29 @@ if ! kubectl cluster-info &> /dev/null; then
     exit 1
 fi
 
+# Check required CRDs exist (Elemental + Fleet)
+REQUIRED_CRDS=(
+    "machineinventoryselectortemplates.elemental.cattle.io"
+    "clusters.provisioning.cattle.io"
+    "clustergroups.fleet.cattle.io"
+    "gitrepos.fleet.cattle.io"
+)
+
+missing_crds=()
+for crd in "${REQUIRED_CRDS[@]}"; do
+    if ! kubectl get crd "$crd" &> /dev/null; then
+        missing_crds+=("$crd")
+    fi
+done
+
+if [ ${#missing_crds[@]} -gt 0 ]; then
+    echo "ERROR: Required CRDs are missing: ${missing_crds[*]}"
+    echo "   You are likely NOT connected to the Rancher management cluster."
+    echo "   Set KUBECONFIG to the Rancher server kubeconfig and retry."
+    echo "   Example: export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+    exit 1
+fi
+
 # Check that ztp-precreate.sh exists
 if [ ! -f "$ZTP_SCRIPT" ]; then
     for candidate in "$PROJECT_ROOT/../ztp-scale-nodes/ztp-precreate.sh"; do

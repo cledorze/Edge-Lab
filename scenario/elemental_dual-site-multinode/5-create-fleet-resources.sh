@@ -53,6 +53,27 @@ if ! kubectl cluster-info &> /dev/null; then
     exit 1
 fi
 
+# Check required Fleet CRDs exist
+REQUIRED_CRDS=(
+    "clustergroups.fleet.cattle.io"
+    "gitrepos.fleet.cattle.io"
+)
+
+missing_crds=()
+for crd in "${REQUIRED_CRDS[@]}"; do
+    if ! kubectl get crd "$crd" &> /dev/null; then
+        missing_crds+=("$crd")
+    fi
+done
+
+if [ ${#missing_crds[@]} -gt 0 ]; then
+    echo "ERROR: Required Fleet CRDs are missing: ${missing_crds[*]}"
+    echo "   You are likely NOT connected to the Rancher management cluster."
+    echo "   Set KUBECONFIG to the Rancher server kubeconfig and retry."
+    echo "   Example: export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+    exit 1
+fi
+
 # Verify YAML files exist
 REQUIRED_FILES=(
     "$YAML_DIR/clustergroup-site-a.yaml"
