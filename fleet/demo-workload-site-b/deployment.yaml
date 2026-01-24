@@ -44,6 +44,7 @@ spec:
           # Get node name and pod IP from environment
           NODE_NAME=${NODE_NAME}
           POD_IP=${POD_IP}
+          POD_NAMESPACE=${POD_NAMESPACE}
           
           # Get node IP and site-id from Kubernetes API
           TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
@@ -52,15 +53,20 @@ spec:
           NODE_INFO=$(curl -s -k -H "Authorization: Bearer $TOKEN" \
             "https://kubernetes.default.svc/api/v1/nodes/${NODE_NAME}")
           
-          # Extract node IP
+          # Extract node IP and cluster name
           if command -v jq >/dev/null 2>&1; then
             NODE_IP=$(echo "$NODE_INFO" | jq -r '.status.addresses[] | select(.type=="InternalIP") | .address' 2>/dev/null || echo "unknown")
             SITE_ID=$(echo "$NODE_INFO" | jq -r '.metadata.labels["site-id"] // "site-b"' 2>/dev/null || echo "site-b")
+            CLUSTER_NAME=$(echo "$NODE_INFO" | jq -r '.metadata.labels["cattle.io/cluster-name"] // .metadata.labels["cluster.x-k8s.io/cluster-name"] // "unknown"' 2>/dev/null || echo "unknown")
           else
             # Fallback: use grep and sed
             NODE_IP=$(echo "$NODE_INFO" | grep -o '"addresses":\[{[^}]*"type":"InternalIP"[^}]*"address":"[^"]*"' \
               | grep -o '"address":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
             SITE_ID=$(echo "$NODE_INFO" | grep -o '"site-id":"[^"]*"' | cut -d'"' -f4 || echo "site-b")
+            CLUSTER_NAME=$(echo "$NODE_INFO" | grep -o '"cattle.io/cluster-name":"[^"]*"' | head -1 | cut -d'"' -f4)
+            if [ -z "$CLUSTER_NAME" ]; then
+              CLUSTER_NAME=$(echo "$NODE_INFO" | grep -o '"cluster.x-k8s.io/cluster-name":"[^"]*"' | head -1 | cut -d'"' -f4)
+            fi
           fi
           
           # Final fallback for node IP
@@ -72,18 +78,45 @@ spec:
           if [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ]; then
             SITE_ID="site-b"
           fi
+
+          if [ -z "$CLUSTER_NAME" ] || [ "$CLUSTER_NAME" = "null" ]; then
+            CLUSTER_NAME="unknown"
+          fi
+
+          # Get pod distribution for this workload
+          PODS_INFO=$(curl -s -k -H "Authorization: Bearer $TOKEN" \
+            "https://kubernetes.default.svc/api/v1/namespaces/${POD_NAMESPACE}/pods?labelSelector=app%3Ddemo-workload-site-b")
+          if command -v jq >/dev/null 2>&1; then
+            POD_COUNT=$(echo "$PODS_INFO" | jq -r '.items | length' 2>/dev/null || echo "0")
+            REPLICA_NODES=$(echo "$PODS_INFO" | jq -r '.items[].spec.nodeName' 2>/dev/null | sort -u | wc -l | tr -d ' ')
+          else
+            POD_NODES=$(echo "$PODS_INFO" | grep -o '"nodeName":"[^"]*"' | cut -d'"' -f4)
+            if [ -n "$POD_NODES" ]; then
+              POD_COUNT=$(echo "$POD_NODES" | wc -l | tr -d ' ')
+              REPLICA_NODES=$(echo "$POD_NODES" | sort -u | wc -l | tr -d ' ')
+            else
+              POD_COUNT="unknown"
+              REPLICA_NODES="unknown"
+            fi
+          fi
           
           # Debug output
           echo "DEBUG: NODE_NAME=${NODE_NAME}"
           echo "DEBUG: NODE_IP=${NODE_IP}"
           echo "DEBUG: POD_IP=${POD_IP}"
           echo "DEBUG: SITE_ID=${SITE_ID}"
+          echo "DEBUG: CLUSTER_NAME=${CLUSTER_NAME}"
+          echo "DEBUG: POD_COUNT=${POD_COUNT}"
+          echo "DEBUG: REPLICA_NODES=${REPLICA_NODES}"
           
           # Replace placeholders in template
           sed -e "s|{{NODE_IP}}|$NODE_IP|g" \
               -e "s|{{NODE_NAME}}|$NODE_NAME|g" \
               -e "s|{{POD_IP}}|$POD_IP|g" \
               -e "s|{{SITE_ID}}|$SITE_ID|g" \
+              -e "s|{{CLUSTER_NAME}}|$CLUSTER_NAME|g" \
+              -e "s|{{POD_COUNT}}|$POD_COUNT|g" \
+              -e "s|{{REPLICA_NODES}}|$REPLICA_NODES|g" \
               /templates/index.html.template > /output/index.html
           
           # Verify replacement worked
@@ -110,6 +143,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       containers:
       - name: web
         image: nginx:1.25-alpine

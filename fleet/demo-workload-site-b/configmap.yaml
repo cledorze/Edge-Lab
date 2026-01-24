@@ -163,6 +163,10 @@ data:
                 <h2>Runtime</h2>
                 <table>
                     <tr>
+                        <th>Cluster</th>
+                        <td class="value">{{CLUSTER_NAME}}</td>
+                    </tr>
+                    <tr>
                         <th>Node Name</th>
                         <td class="value">{{NODE_NAME}}</td>
                     </tr>
@@ -173,6 +177,14 @@ data:
                     <tr>
                         <th>Pod IP</th>
                         <td class="value">{{POD_IP}}</td>
+                    </tr>
+                    <tr>
+                        <th>Pod Replicas</th>
+                        <td class="value">{{POD_COUNT}}</td>
+                    </tr>
+                    <tr>
+                        <th>Replica Nodes</th>
+                        <td class="value">{{REPLICA_NODES}}</td>
                     </tr>
                     <tr>
                         <th>Namespace</th>
