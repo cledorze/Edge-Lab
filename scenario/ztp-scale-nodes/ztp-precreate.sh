@@ -294,14 +294,6 @@ spec:
     machinePools:
 ${machine_pools}"
     
-    # Add VIP configuration if provided
-    if [ -n "$vip" ]; then
-        cluster_yaml="${cluster_yaml}
-  localClusterAuthEndpoint:
-    enabled: true
-    fqdn: ${vip}"
-    fi
-    
     echo "$cluster_yaml"
 }
 
