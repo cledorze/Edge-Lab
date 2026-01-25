@@ -41,6 +41,13 @@ spec:
         - sh
         - -c
         - |
+          # Ensure jq is available for reliable JSON parsing
+          if ! command -v jq >/dev/null 2>&1; then
+            if command -v apk >/dev/null 2>&1; then
+              apk add --no-cache jq >/dev/null 2>&1 || true
+            fi
+          fi
+
           # Get node name and pod IP from environment
           NODE_NAME=${NODE_NAME}
           POD_IP=${POD_IP}
@@ -55,7 +62,7 @@ spec:
           
           # Extract node IP and cluster name
           if command -v jq >/dev/null 2>&1; then
-            NODE_IP=$(echo "$NODE_INFO" | jq -r '.status.addresses[] | select(.type=="InternalIP") | .address' 2>/dev/null || echo "unknown")
+            NODE_IP=$(echo "$NODE_INFO" | jq -r '.status.addresses[] | select(.type=="InternalIP" or .type=="ExternalIP") | .address' 2>/dev/null | head -1 || echo "unknown")
             SITE_ID=$(echo "$NODE_INFO" | jq -r '.metadata.labels["site-id"] // "site-a"' 2>/dev/null || echo "site-a")
             CLUSTER_NAME=$(echo "$NODE_INFO" | jq -r '.metadata.labels["cattle.io/cluster-name"] // .metadata.labels["cluster.x-k8s.io/cluster-name"] // "unknown"' 2>/dev/null || echo "unknown")
           else
@@ -80,7 +87,7 @@ spec:
           fi
 
           if [ -z "$CLUSTER_NAME" ] || [ "$CLUSTER_NAME" = "null" ]; then
-            CLUSTER_NAME="unknown"
+            CLUSTER_NAME="site-a-cluster"
           fi
 
           # Get pod distribution for this workload
@@ -95,8 +102,8 @@ spec:
               POD_COUNT=$(echo "$POD_NODES" | wc -l | tr -d ' ')
               REPLICA_NODES=$(echo "$POD_NODES" | sort -u | wc -l | tr -d ' ')
             else
-              POD_COUNT="unknown"
-              REPLICA_NODES="unknown"
+              POD_COUNT="0"
+              REPLICA_NODES="0"
             fi
           fi
           
