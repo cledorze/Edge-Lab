@@ -8,6 +8,7 @@ metadata:
     # This job runs once to update the Ingress with the correct Ingress Controller IP
     # Based on SUSE Edge 3.4 documentation recommendation (Section 24.6.1: "Ingress with MetalLB")
 spec:
+  ttlSecondsAfterFinished: 120
   backoffLimit: 3
   template:
     metadata:

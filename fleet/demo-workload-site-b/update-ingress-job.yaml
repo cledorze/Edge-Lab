@@ -6,6 +6,7 @@ metadata:
   annotations:
     fleet.cattle.io/redeploy: "true"
 spec:
+  ttlSecondsAfterFinished: 120
   backoffLimit: 3
   template:
     metadata:
