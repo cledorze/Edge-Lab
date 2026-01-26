@@ -364,8 +364,8 @@ spec:
           scale-id: "${scale_id}"
 EOF
 
-log_info "Patching cluster ${cluster_name} with new machinePool ${pool_name}"
-kubectl patch cluster "${cluster_name}" -n fleet-default --type='json' -p="[
+log_info "Patching provisioning cluster ${cluster_name} with new machinePool ${pool_name}"
+kubectl patch clusters.provisioning.cattle.io "${cluster_name}" -n fleet-default --type='json' -p="[
   {
     \"op\": \"add\",
     \"path\": \"/spec/rkeConfig/machinePools/-\",
