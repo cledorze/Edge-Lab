@@ -1,41 +1,45 @@
 apiVersion: batch/v1
-kind: Job
+kind: CronJob
 metadata:
-  name: update-ingress-hostname-v4
+  name: update-ingress-hostname
   namespace: demo-workload-site-a
   annotations:
     fleet.cattle.io/redeploy: "true"
     # This job runs once to update the Ingress with the correct Ingress Controller IP
     # Based on SUSE Edge 3.4 documentation recommendation (Section 24.6.1: "Ingress with MetalLB")
 spec:
-  ttlSecondsAfterFinished: 120
-  backoffLimit: 3
-  template:
-    metadata:
-      labels:
-        app: update-ingress-hostname
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
     spec:
-      restartPolicy: OnFailure
-      serviceAccountName: demo-workload-site-a
-      containers:
-      - name: update-ingress
-        image: bitnami/kubectl:latest
-        command:
-        - /bin/bash
-        - /scripts/update-ingress-hostname.sh
-        env:
-        - name: INGRESS_NAME
-          value: demo-workload-site-a
-        - name: NAMESPACE
-          value: demo-workload-site-a
-        - name: HOSTNAME_PREFIX
-          value: demo-workload-site-a
-        volumeMounts:
-        - name: scripts
-          mountPath: /scripts
-          readOnly: true
-      volumes:
-      - name: scripts
-        configMap:
-          name: update-ingress-scripts
-          defaultMode: 0755
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            app: update-ingress-hostname
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: demo-workload-site-a
+          containers:
+          - name: update-ingress
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - /scripts/update-ingress-hostname.sh
+            env:
+            - name: INGRESS_NAME
+              value: demo-workload-site-a
+            - name: NAMESPACE
+              value: demo-workload-site-a
+            - name: HOSTNAME_PREFIX
+              value: demo-workload-site-a
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+          volumes:
+          - name: scripts
+            configMap:
+              name: update-ingress-scripts
+              defaultMode: 0755
