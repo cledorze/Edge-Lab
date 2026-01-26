@@ -350,7 +350,7 @@ spec:
         matchLabels:
           site-id: ${site_id}
           node-role: ${role_choice}
-          scale-id: ${scale_id}
+          scale-id: "${scale_id}"
 EOF
 
 log_info "Patching cluster ${cluster_name} with new machinePool ${pool_name}"
