@@ -252,7 +252,10 @@ create_vm() {
     fi
 
     if [ ! -f "$disk_path" ]; then
-        qemu-img create -f qcow2 "$disk_path" "$disk_size" >/dev/null
+        if ! qemu-img create -f qcow2 "$disk_path" "$disk_size" >/dev/null 2>&1; then
+            log_warn "qemu-img failed without sudo, retrying with sudo..."
+            sudo qemu-img create -f qcow2 "$disk_path" "$disk_size" >/dev/null
+        fi
     fi
 
     local mac
