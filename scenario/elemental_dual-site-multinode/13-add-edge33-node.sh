@@ -177,6 +177,16 @@ build_iso() {
     local temp_dir
     temp_dir=$(mktemp -d)
     local backup_dir="${temp_dir}/eib_elemental_backup"
+    local min_gb=5
+
+    cleanup_container_storage() {
+        local avail_kb
+        avail_kb=$(df -Pk /var/tmp | awk 'NR==2 {print $4}')
+        if [ -n "$avail_kb" ] && [ $((avail_kb / 1024 / 1024)) -lt "$min_gb" ]; then
+            log_warn "Low space on /var/tmp, cleaning container image temp storage..."
+            rm -rf /var/tmp/container_images_storage* 2>/dev/null || true
+        fi
+    }
 
     mkdir -p "$OUTPUT_DIR"
     mkdir -p "$eib_elemental_dir"
@@ -185,6 +195,7 @@ build_iso() {
     find "$eib_elemental_dir" -maxdepth 1 -type f ! -name ".gitkeep" -exec mv {} "$backup_dir/" \; 2>/dev/null || true
     cp "$config_file" "${eib_elemental_dir}/elemental_config.yaml"
 
+    cleanup_container_storage
     (cd "$EIB_33_DIR" && "$EIB_BUILD_SCRIPT")
 
     local iso_built=""
