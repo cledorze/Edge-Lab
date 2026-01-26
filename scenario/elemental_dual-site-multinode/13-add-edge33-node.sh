@@ -297,7 +297,7 @@ sed "s/name: site-${site_choice}-registration/name: ${reg_name}/" "$base_reg_fil
         /machineInventoryLabels:/ {
             print;
             print "    node-role: " role;
-            print "    scale-id: " scale;
+            print "    scale-id: \"" scale "\"";
             print "    edge-version: \"3.3\"";
             print "    suc-group: edge33";
             next
