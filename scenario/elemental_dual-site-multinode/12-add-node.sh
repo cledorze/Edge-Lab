@@ -235,6 +235,7 @@ build_iso() {
 create_vm() {
     local vm_name="$1"
     local iso_path="$2"
+    local wait_seconds="${3:-0}"
     local disk_path="/var/lib/libvirt/images/${vm_name}.qcow2"
     local disk_size="25G"
     local memory="8192"
@@ -281,8 +282,16 @@ create_vm() {
         --console pty,target_type=serial \
         --noautoconsole \
         --osinfo detect=on,name=linux2024 \
-        --wait -1
+        --wait "$wait_seconds"
 }
+
+WAIT_SECONDS=0
+RESUME=false
+if [ "${1:-}" = "--wait-install" ]; then
+    WAIT_SECONDS=-1
+elif [ "${1:-}" = "--resume" ]; then
+    RESUME=true
+fi
 
 check_prerequisites
 
@@ -291,8 +300,13 @@ echo "Add New Node (Multinode)"
 echo "=========================================="
 echo ""
 
-site_choice=$(prompt_choice "Select site [A/B] (default: A): " "A")
-role_choice=$(prompt_choice "Select role [worker/control-plane] (default: worker): " "worker")
+if [ "$RESUME" = true ]; then
+    site_choice="${SITE_CHOICE:-A}"
+    role_choice="${ROLE_CHOICE:-worker}"
+else
+    site_choice=$(prompt_choice "Select site [A/B] (default: A): " "A")
+    role_choice=$(prompt_choice "Select role [worker/control-plane] (default: worker): " "worker")
+fi
 
 site_choice=$(echo "$site_choice" | tr '[:upper:]' '[:lower:]')
 role_choice=$(echo "$role_choice" | tr '[:upper:]' '[:lower:]')
@@ -310,7 +324,7 @@ fi
 site_id="site-${site_choice}"
 cluster_name="site-${site_choice}-cluster"
 base_reg_file="${YAML_DIR}/site-${site_choice}-registration.yaml"
-scale_id=$(date +"%Y%m%d%H%M%S")
+scale_id="${SCALE_ID:-$(date +"%Y%m%d%H%M%S")}"
 
 reg_name="${site_id}-${role_choice}-reg-${scale_id}"
 selector_name="${cluster_name}-${role_choice}-selector-${scale_id}"
@@ -344,11 +358,19 @@ log_info "Registration URL: $reg_url"
 
 mkdir -p "$ELEMENTAL_DIR"
 config_out="${ELEMENTAL_DIR}/elemental_config-${site_id}-${role_choice}-${scale_id}.yaml"
-download_config "$reg_url" "$config_out"
-add_install_and_reset "$config_out"
+if [ "$RESUME" = true ] && [ -f "$config_out" ]; then
+    log_info "Resume: config exists, skipping download"
+else
+    download_config "$reg_url" "$config_out"
+    add_install_and_reset "$config_out"
+fi
 
 iso_out="${OUTPUT_DIR}/vm-rancher-fleet-scale-${site_id}-${role_choice}-${scale_id}.iso"
-build_iso "$config_out" "$iso_out"
+if [ "$RESUME" = true ] && [ -f "$iso_out" ]; then
+    log_info "Resume: ISO exists, skipping build"
+else
+    build_iso "$config_out" "$iso_out"
+fi
 
 log_info "Creating MachineInventorySelectorTemplate: $selector_name"
 cat << EOF | kubectl apply -f -
@@ -389,9 +411,13 @@ kubectl patch clusters.provisioning.cattle.io "${cluster_name}" -n fleet-default
 
 vm_name="${site_id}-${role_choice}-${scale_id}"
 log_info "Creating VM: $vm_name"
-create_vm "$vm_name" "$iso_out"
+create_vm "$vm_name" "$iso_out" "$WAIT_SECONDS"
 
 log_info "OK: New node VM created"
 log_info "Next steps:"
 log_info "  - Wait for MachineInventory registration"
 log_info "  - Verify node joins cluster: kubectl get nodes -n ${cluster_name}"
+log_info "Resume mode example:"
+log_info "  SCALE_ID=${scale_id} SITE_CHOICE=${site_choice} ROLE_CHOICE=${role_choice} $0 --resume"
+log_info "To wait for install completion (blocking):"
+log_info "  $0 --wait-install"
