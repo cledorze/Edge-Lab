@@ -1,13 +1,20 @@
 #!/bin/bash
 # Add a new node VM to Site A or Site B with role-based selector (worker/control-plane)
 # This script:
-#   1) Creates a role-specific MachineRegistration (adds labels)
-#   2) Downloads Elemental config from the new registration endpoint
+#   1) Reuses the site registration endpoint (site-a-registration or site-b-registration)
+#   2) Downloads the Elemental config from that endpoint
 #   3) Builds a site-specific ISO for the new node
-#   4) Creates a MachineInventorySelectorTemplate + machinePool in the cluster
+#   4) Increases the target machinePool quantity (workers or control-plane)
 #   5) Creates the VM with the new ISO
 #
-# Usage: ./12-add-node.sh
+# Routing logic:
+# - Site A / Site B is determined by the selected registration endpoint (site-id label)
+# - Role is determined by the machinePool being scaled
+#
+# Usage:
+#   ./12-add-node.sh
+#   ./12-add-node.sh --wait-install
+#   SCALE_ID=... SITE_CHOICE=A ROLE_CHOICE=worker ./12-add-node.sh --resume
 
 set -euo pipefail
 
