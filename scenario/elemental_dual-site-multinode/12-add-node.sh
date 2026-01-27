@@ -71,6 +71,12 @@ check_prerequisites() {
         exit 1
     fi
 
+    if ! command -v jq &>/dev/null; then
+        log_error "jq is not available"
+        log_info "Install with: sudo zypper in -y jq"
+        exit 1
+    fi
+
     if ! command -v virt-install &>/dev/null; then
         log_error "virt-install is not installed"
         exit 1
@@ -336,37 +342,14 @@ fi
 
 site_id="site-${site_choice}"
 cluster_name="site-${site_choice}-cluster"
-base_reg_file="${YAML_DIR}/site-${site_choice}-registration.yaml"
 scale_id="${SCALE_ID:-$(date +"%Y%m%d%H%M%S")}"
 
-reg_name="${site_id}-${role_choice}-reg-${scale_id}"
-selector_name="${cluster_name}-${role_choice}-selector-${scale_id}"
-pool_name="scale-${role_choice}-${scale_id}"
+# Reuse existing registration endpoint per site.
+reg_name="site-${site_choice}-registration"
 
 log_info "Site: ${site_id} | Role: ${role_choice} | Scale ID: ${scale_id}"
 
-if [ ! -f "$base_reg_file" ]; then
-    log_error "Base registration file not found: $base_reg_file"
-    exit 1
-fi
-
-tmp_reg=$(mktemp)
-sed "s/name: site-${site_choice}-registration/name: ${reg_name}/" "$base_reg_file" | \
-    awk -v role="$role_choice" -v scale="$scale_id" '
-        /machineInventoryLabels:/ {
-            print;
-            print "    node-role: " role;
-            print "    scale-id: \"" scale "\"";
-            next
-        }
-        {print}
-    ' > "$tmp_reg"
-
-step_pause "Create MachineRegistration" "kubectl apply -f <generated registration manifest>"
-log_info "Creating MachineRegistration: $reg_name"
-kubectl apply -f "$tmp_reg"
-rm -f "$tmp_reg"
-
+step_pause "Use existing registration endpoint" "kubectl get machineregistration $reg_name -n fleet-default"
 step_pause "Wait for registration URL" "kubectl get machineregistration $reg_name -n fleet-default -o jsonpath='{.status.registrationURL}'"
 reg_url=$(wait_for_registration_url "$reg_name")
 log_info "Registration URL: $reg_url"
@@ -389,43 +372,23 @@ else
     build_iso "$config_out" "$iso_out"
 fi
 
-step_pause "Create MachineInventorySelectorTemplate" "kubectl apply -f <selector template>"
-log_info "Creating MachineInventorySelectorTemplate: $selector_name"
-cat << EOF | kubectl apply -f -
-apiVersion: elemental.cattle.io/v1beta1
-kind: MachineInventorySelectorTemplate
-metadata:
-  name: ${selector_name}
-  namespace: fleet-default
-spec:
-  template:
-    spec:
-      selector:
-        matchLabels:
-          site-id: ${site_id}
-          node-role: ${role_choice}
-          scale-id: "${scale_id}"
-EOF
+pool_name="workers"
+if [ "$role_choice" = "control-plane" ]; then
+    pool_name="control-plane"
+fi
 
-step_pause "Patch provisioning cluster with machinePool" "kubectl patch clusters.provisioning.cattle.io ${cluster_name} -n fleet-default --type=json -p=[...]"
-log_info "Patching provisioning cluster ${cluster_name} with new machinePool ${pool_name}"
-kubectl patch clusters.provisioning.cattle.io "${cluster_name}" -n fleet-default --type='json' -p="[
-  {
-    \"op\": \"add\",
-    \"path\": \"/spec/rkeConfig/machinePools/-\",
-    \"value\": {
-      \"name\": \"${pool_name}\",
-      \"quantity\": 1,
-      \"etcdRole\": $( [ "$role_choice" = "control-plane" ] && echo "true" || echo "false" ),
-      \"controlPlaneRole\": $( [ "$role_choice" = "control-plane" ] && echo "true" || echo "false" ),
-      \"workerRole\": $( [ "$role_choice" = "worker" ] && echo "true" || echo "false" ),
-      \"machineConfigRef\": {
-        \"kind\": \"MachineInventorySelectorTemplate\",
-        \"name\": \"${selector_name}\",
-        \"apiVersion\": \"elemental.cattle.io/v1beta1\"
-      }
-    }
-  }
+step_pause "Increase machine pool quantity" "kubectl patch clusters.provisioning.cattle.io ${cluster_name} -n fleet-default --type=json -p='[...]'"
+pool_index=$(kubectl -n fleet-default get clusters.provisioning.cattle.io "${cluster_name}" -o json | jq -r --arg name "$pool_name" '.spec.rkeConfig.machinePools | to_entries[] | select(.value.name==$name) | .key')
+if [ -z "$pool_index" ] || [ "$pool_index" = "null" ]; then
+    log_error "Machine pool ${pool_name} not found in ${cluster_name}"
+    exit 1
+fi
+
+current_qty=$(kubectl -n fleet-default get clusters.provisioning.cattle.io "${cluster_name}" -o json | jq -r --arg name "$pool_name" '.spec.rkeConfig.machinePools[] | select(.name==$name) | .quantity')
+new_qty=$((current_qty + 1))
+log_info "Patching ${pool_name} quantity: ${current_qty} -> ${new_qty}"
+kubectl -n fleet-default patch clusters.provisioning.cattle.io "${cluster_name}" --type='json' -p="[
+  {\"op\":\"replace\",\"path\":\"/spec/rkeConfig/machinePools/${pool_index}/quantity\",\"value\":${new_qty}}
 ]"
 
 vm_name="${site_id}-${role_choice}-${scale_id}"
