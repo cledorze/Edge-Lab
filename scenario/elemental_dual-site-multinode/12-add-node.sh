@@ -40,6 +40,15 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1" >&2; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
+step_pause() {
+    local title="$1"
+    local cmd="$2"
+    echo ""
+    echo "Step: ${title}"
+    echo "Command: ${cmd}"
+    read -r -p "Press Enter to continue..." _
+}
+
 prompt_choice() {
     local prompt="$1"
     local default="$2"
@@ -349,10 +358,12 @@ sed "s/name: site-${site_choice}-registration/name: ${reg_name}/" "$base_reg_fil
         {print}
     ' > "$tmp_reg"
 
+step_pause "Create MachineRegistration" "kubectl apply -f <generated registration manifest>"
 log_info "Creating MachineRegistration: $reg_name"
 kubectl apply -f "$tmp_reg"
 rm -f "$tmp_reg"
 
+step_pause "Wait for registration URL" "kubectl get machineregistration $reg_name -n fleet-default -o jsonpath='{.status.registrationURL}'"
 reg_url=$(wait_for_registration_url "$reg_name")
 log_info "Registration URL: $reg_url"
 
@@ -361,6 +372,7 @@ config_out="${ELEMENTAL_DIR}/elemental_config-${site_id}-${role_choice}-${scale_
 if [ "$RESUME" = true ] && [ -f "$config_out" ]; then
     log_info "Resume: config exists, skipping download"
 else
+    step_pause "Download Elemental config" "curl -k -H \"Accept: application/yaml\" $reg_url -o $config_out"
     download_config "$reg_url" "$config_out"
     add_install_and_reset "$config_out"
 fi
@@ -369,9 +381,11 @@ iso_out="${OUTPUT_DIR}/vm-rancher-fleet-scale-${site_id}-${role_choice}-${scale_
 if [ "$RESUME" = true ] && [ -f "$iso_out" ]; then
     log_info "Resume: ISO exists, skipping build"
 else
+    step_pause "Build ISO" "$EIB_BUILD_SCRIPT"
     build_iso "$config_out" "$iso_out"
 fi
 
+step_pause "Create MachineInventorySelectorTemplate" "kubectl apply -f <selector template>"
 log_info "Creating MachineInventorySelectorTemplate: $selector_name"
 cat << EOF | kubectl apply -f -
 apiVersion: elemental.cattle.io/v1beta1
@@ -389,6 +403,7 @@ spec:
           scale-id: "${scale_id}"
 EOF
 
+step_pause "Patch provisioning cluster with machinePool" "kubectl patch clusters.provisioning.cattle.io ${cluster_name} -n fleet-default --type=json -p=[...]"
 log_info "Patching provisioning cluster ${cluster_name} with new machinePool ${pool_name}"
 kubectl patch clusters.provisioning.cattle.io "${cluster_name}" -n fleet-default --type='json' -p="[
   {
@@ -410,6 +425,7 @@ kubectl patch clusters.provisioning.cattle.io "${cluster_name}" -n fleet-default
 ]"
 
 vm_name="${site_id}-${role_choice}-${scale_id}"
+step_pause "Create VM" "virt-install --name $vm_name --cdrom $iso_out ..."
 log_info "Creating VM: $vm_name"
 create_vm "$vm_name" "$iso_out" "$WAIT_SECONDS"
 
