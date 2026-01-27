@@ -40,11 +40,15 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1" >&2; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
+STEP_NUM=0
+
 step_pause() {
     local title="$1"
     local cmd="$2"
+    STEP_NUM=$((STEP_NUM + 1))
     echo ""
-    echo "Step: ${title}"
+    echo "Step ${STEP_NUM}: ${title}"
+    echo "$(printf "=%.0s" $(seq 1 $((7 + ${#STEP_NUM} + 2 + ${#title}))))"
     echo "Command: ${cmd}"
     read -r -p "Press Enter to continue..." _
 }
