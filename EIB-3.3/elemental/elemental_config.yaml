@@ -1,0 +1,13 @@
+# Elemental Config Placeholder for Edge 3.3
+# This file must be downloaded from Rancher UI or provided by the add-node script
+#
+# The 12-add-edge33-node.sh script will automatically:
+# 1. Create a MachineRegistration with SUC labels
+# 2. Download the elemental_config.yaml from the registration URL
+# 3. Copy it here before building the ISO
+#
+# Manual download:
+# 1. Go to Rancher UI -> Elemental -> Registration Endpoints
+# 2. Click on the registration endpoint
+# 3. Download the elemental_config.yaml
+# 4. Copy it to this file
