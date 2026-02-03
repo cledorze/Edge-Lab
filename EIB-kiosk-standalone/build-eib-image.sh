@@ -16,7 +16,7 @@ NC='\033[0m'
 EIB_VERSION="1.3.0"
 EIB_IMAGE="registry.suse.com/edge/3.4/edge-image-builder:${EIB_VERSION}"
 CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUTPUT_DIR="${CONFIG_DIR}/output"
+OUTPUT_DIR="/mnt/build-data/eib-output"
 DEFINITION_FILE="iso-definition.yaml"
 BASE_IMAGE="SL-Micro.x86_64-6.1-Base-RT-SelfInstall-GM.install.iso"
 
@@ -85,9 +85,12 @@ build_image() {
     log ""
 
     # EIB build command
-    podman run --rm --privileged \
-        -v "${CONFIG_DIR}:/eib:Z" \
-        -v "${OUTPUT_DIR}:/build:Z" \
+    # Mount /mnt/build-data/tmp as /var/tmp to avoid disk space issues
+    mkdir -p /mnt/build-data/tmp
+    podman run --rm --privileged --security-opt label=disable \
+        -v "${CONFIG_DIR}:/eib" \
+        -v "${OUTPUT_DIR}:/build" \
+        -v "/mnt/build-data/tmp:/var/tmp" \
         "${EIB_IMAGE}" \
         build \
         --definition-file "${DEFINITION_FILE}" \

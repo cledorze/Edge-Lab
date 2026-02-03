@@ -11,7 +11,6 @@ operatingSystem:
   kernelArgs:
     - selinux=0
     - quiet
-    - splash
   time:
     timezone: Europe/Paris
     ntp:
