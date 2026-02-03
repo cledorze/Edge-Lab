@@ -1,0 +1,104 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kiosk-firefox
+  namespace: kiosk
+  labels:
+    app.kubernetes.io/name: kiosk-firefox
+    app.kubernetes.io/part-of: kiosk-firefox
+spec:
+  selector:
+    matchLabels:
+      app: kiosk-firefox
+  template:
+    metadata:
+      labels:
+        app: kiosk-firefox
+    spec:
+      initContainers:
+        - name: x11
+          image: registry.opensuse.org/home/atgracey/wallboardos/15.6/x11:latest
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+          volumeMounts:
+            - mountPath: /tmp/.X11-unix/
+              name: xsocket
+            - mountPath: /home/user/xauthority/
+              name: xauthority
+            - mountPath: /run/udev/data/
+              name: udev-data
+        - name: pulseaudio
+          image: registry.opensuse.org/home/atgracey/wallboardos/15.6/pa:latest
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+          env:
+            - name: PULSE_SERVER
+              value: "/var/run/pulse/native"
+            - name: DISPLAY
+              value: ':0'
+            - name: XAUTHORITY
+              value: /root/xauthority/.xauth
+          volumeMounts:
+            - mountPath: /var/run/pulse/
+              name: pasocket
+            - mountPath: /tmp/.X11-unix/
+              name: xsocket
+            - mountPath: /root/xauthority/
+              name: xauthority
+            - mountPath: /run/udev/data/
+              name: udev-data
+      containers:
+        - name: firefox
+          image: registry.opensuse.org/home/atgracey/wallboardos/15.6/firefox:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PULSE_SERVER
+              value: "/var/run/pulse/native"
+            - name: DISPLAY
+              value: ':0'
+            - name: XAUTHORITY
+              value: /home/user/xauthority/.xauth
+            - name: URL
+              value: "https://www.suse.com"
+          securityContext:
+            runAsUser: 1000
+          volumeMounts:
+            - mountPath: /var/run/pulse/
+              name: pasocket
+            - mountPath: /tmp/.X11-unix/
+              name: xsocket
+            - mountPath: /home/user/xauthority/
+              name: xauthority
+            - mountPath: /dev/shm
+              name: shm
+      dnsPolicy: ClusterFirst
+      terminationGracePeriodSeconds: 5
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+      volumes:
+        - name: xauthority
+          emptyDir: {}
+        - name: xsocket
+          emptyDir: {}
+        - name: pasocket
+          emptyDir: {}
+        - name: udev-data
+          hostPath:
+            path: /run/udev/data/
+            type: Directory
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
