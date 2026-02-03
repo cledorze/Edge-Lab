@@ -11,6 +11,8 @@ operatingSystem:
   kernelArgs:
     - selinux=0
     - quiet
+    - loglevel=0
+    - vt.global_cursor_default=0
   time:
     timezone: Europe/Paris
     ntp:

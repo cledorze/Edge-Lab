@@ -85,7 +85,6 @@ build_image() {
     log ""
 
     # EIB build command
-    # Mount /mnt/build-data/tmp as /var/tmp to avoid disk space issues
     mkdir -p /mnt/build-data/tmp
     podman run --rm --privileged --security-opt label=disable \
         -v "${CONFIG_DIR}:/eib" \
