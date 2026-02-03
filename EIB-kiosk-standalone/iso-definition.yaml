@@ -10,6 +10,8 @@ operatingSystem:
     installDevice: /dev/nvme0n1
   kernelArgs:
     - selinux=0
+    - quiet
+    - splash
   time:
     timezone: Europe/Paris
     ntp:
