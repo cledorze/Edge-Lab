@@ -1,0 +1,9 @@
+# Base Image Placeholder
+
+Download the SL Micro 6.1 Self-Install ISO and place it here:
+
+  SL-Micro.x86_64-6.1-Base-RT-SelfInstall-GM.install.iso
+
+Download from: https://www.suse.com/download/sle-micro/
+
+Required for EIB build process.
