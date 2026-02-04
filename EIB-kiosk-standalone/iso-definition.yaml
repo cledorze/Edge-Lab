@@ -40,3 +40,10 @@ operatingSystem:
 # K3s singlenode standalone (no Rancher/Elemental)
 kubernetes:
   version: v1.33.7+k3s3
+
+# Embedded registry for air-gapped deployment
+embeddedArtifactRegistry:
+  images:
+    - name: registry.opensuse.org/home/atgracey/wallboardos/15.6/x11:latest
+    - name: registry.opensuse.org/home/atgracey/wallboardos/15.6/pa:latest
+    - name: registry.opensuse.org/home/atgracey/wallboardos/15.6/firefox:latest
