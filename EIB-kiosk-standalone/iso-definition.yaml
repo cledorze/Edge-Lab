@@ -39,4 +39,4 @@ operatingSystem:
 
 # K3s singlenode standalone (no Rancher/Elemental)
 kubernetes:
-  version: v1.33.5+k3s1
+  version: v1.33.7+k3s3
