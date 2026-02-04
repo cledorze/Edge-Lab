@@ -123,10 +123,7 @@ post_process() {
     log "Checksum: $checksum_file"
 
     # Display information
-    echo ""
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║     Kiosk Standalone K3s - Build completed successfully!     ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
+    log "Build completed successfully!"
     echo ""
     echo "ISO Image: $iso_file"
     echo "Size: $(du -h "$iso_file" | cut -f1)"
@@ -151,12 +148,7 @@ post_process() {
 
 # Main
 main() {
-    echo ""
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║    SUSE Edge 3.4 - Kiosk Standalone K3s Image Builder       ║"
-    echo "║    No Rancher/Elemental - Fully Standalone                  ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
-    echo ""
+    log "SUSE Edge 3.4 - Kiosk Standalone K3s Image Builder"
 
     check_prerequisites
     prepare_output
